@@ -85,10 +85,10 @@ class HemorrhageDataset(Dataset):
             
         if (self.mode == "train") or (self.mode == "val"):
             label = self.query_label(pt_name, img_name)        
-            return img, label
+            return pt_name, img_name, img, label
         
         else:
-            return img
+            return pt_name, img_name, img
         
     def __len__(self):
         return len(self.all_images_path)
