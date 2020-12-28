@@ -65,9 +65,17 @@ class HemorrhageDataset(Dataset):
     def query_label(self, pt_name, img_id):
         label = self.all_label_df.query(f'dirname == "{pt_name}" and ID == "{img_id}"').values[0][2:]
         return np.array(label, dtype=int)
+    
+    def img_name_change_order(self, img_name, new_order):
+        prefix = img_name.split("_")[0]
+        suffix = img_name.split(".")[1]
+        return prefix + "_" + str(new_order) + "." + suffix
         
     def __read_img(self, img_path):
-        return Image.open(img_path)
+        img = Image.open(img_path)
+        if not img.size == (512,512):
+            img = img.resize((512,512))
+        return img
     
     def __get_order(self, img_name):
         try:
@@ -86,8 +94,8 @@ class HemorrhageDataset(Dataset):
             top_img_order = (mid_img_order - 1) if (mid_img_order - 1) in self.pt_images_available_dict[pt_name] else mid_img_order
             bottom_img_order = (mid_img_order + 1) if (mid_img_order + 1) in self.pt_images_available_dict[pt_name] else mid_img_order
             
-            img_top = self.__read_img(os.path.join(self.data_root, pt_name, img_name.replace(str(mid_img_order), str(top_img_order))))
-            img_bottom = self.__read_img(os.path.join(self.data_root, pt_name, img_name.replace(str(mid_img_order), str(bottom_img_order))))
+            img_top = self.__read_img(os.path.join(self.data_root, pt_name, self.img_name_change_order(img_name, top_img_order)))
+            img_bottom = self.__read_img(os.path.join(self.data_root, pt_name, self.img_name_change_order(img_name, bottom_img_order)))
             
             stack = np.stack((np.array(img_top), np.array(img), np.array(img_bottom)), axis=-1) # (512, 512, channel)
             img = Image.fromarray(stack.astype(np.uint8))
