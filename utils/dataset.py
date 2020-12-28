@@ -4,44 +4,24 @@ import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
+from utils.augmentation import get_default_transform
+
 class HemorrhageDataset(Dataset):
-    def __init__(self, pt_id_list, data_root = "./Blood_data/train/", label_csv_path = "./Blood_data/train.csv", mode = "train", stack_img=False):
+    def __init__(self, pt_id_list, data_root = "./Blood_data/train/", label_csv_path = "./Blood_data/train.csv", mode = "train", stack_img=False, augmentation=None):
         self.pt_id_list = pt_id_list
         self.data_root = data_root
         self.label_csv_path = label_csv_path
         self.mode = mode
         self.stack_img = stack_img
+        self.augmentation = augmentation
         
         self.__get_all_images_with_pt_id()
         
         if (mode == "train") or (mode == "val"):
             self.__read_label_csv()
-        
-        self.transform_RGB_train = transforms.Compose([
-            transforms.RandomRotation(20),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5],
-                                 std=[0.5, 0.5, 0.5])
-        ])
-        
-        self.transform_RGB_test = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5],
-                                 std=[0.5, 0.5, 0.5])
-        ])
-        
-        self.transform_gray_train = transforms.Compose([
-            #transforms.RandomRotation(20),
-            #transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5], std=[0.5])
-        ])
-        
-        self.transform_gray_test = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5], std=[0.5])
-        ])
+
+        if not self.augmentation:
+            self.augmentation = get_default_transform(mode = self.mode, RGB = self.stack_img)
         
     def __get_all_images_with_pt_id(self):
         all_images_path = []
@@ -99,32 +79,15 @@ class HemorrhageDataset(Dataset):
             
             stack = np.stack((np.array(img_top), np.array(img), np.array(img_bottom)), axis=-1) # (512, 512, channel)
             img = Image.fromarray(stack.astype(np.uint8))
+
+            # augmentation
+            img = self.augmentation(img)
             
-        if self.mode == "train":
-            label = self.query_label(pt_name, img_name)
-            
-            if self.stack_img:
-                img = self.transform_RGB_train(img)
-            else:
-                img = self.transform_gray_train(img)
-            
-            return img, label
-        
-        elif self.mode == "val":
-            label = self.query_label(pt_name, img_name)
-            
-            if self.stack_img:
-                img = self.transform_RGB_test(img)
-            else:
-                img = self.transform_gray_test(img)
-            
+        if (self.mode == "train") or (self.mode == "val"):
+            label = self.query_label(pt_name, img_name)        
             return img, label
         
         else:
-            if self.stack_img:
-                img = self.transform_RGB_test(img)
-            else:
-                img = self.transform_gray_test(img)
             return img
         
     def __len__(self):
