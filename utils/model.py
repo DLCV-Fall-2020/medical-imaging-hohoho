@@ -46,6 +46,6 @@ class HemoResnext50(nn.Module):
 
 if __name__ == "__main__":
     x = torch.Tensor(10,3,512,512)
-    model = HemoResNet50(7)
+    model = HemoResNet50(in_channels = 3, n_classes=7)
     out = model(x)
     print(out.shape)
