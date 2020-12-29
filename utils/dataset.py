@@ -80,8 +80,8 @@ class HemorrhageDataset(Dataset):
             stack = np.stack((np.array(img_top), np.array(img), np.array(img_bottom)), axis=-1) # (512, 512, channel)
             img = Image.fromarray(stack.astype(np.uint8))
 
-            # augmentation
-            img = self.augmentation(img)
+        # augmentation
+        img = self.augmentation(img)
             
         if (self.mode == "train") or (self.mode == "val"):
             label = self.query_label(pt_name, img_name)        
