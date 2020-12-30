@@ -54,3 +54,10 @@ def ta_convert(in_csv, out_csv):
         writer.writeheader()
         for row in output_rows:
             writer.writerow({'ID': row[0], 'prediction': row[1]})
+
+def get_weight(train_csv_path="./Blood_data/train.csv"):
+    train_df = pd.read_csv("./Blood_data/train.csv")
+    pos_each_class = train_df[["ich", "ivh", "sah", "sdh", "edh"]].sum().values
+    neg_each_class = len(train_df) - pos_each_class
+    weight = neg_each_class / pos_each_class
+    return weight
