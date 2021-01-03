@@ -26,18 +26,19 @@ def train(args, dataset):
     train_loader, valid_loader = dataset.get_dataloaders()
     
     # model
-    model = HemoResNet18(in_channels=args.ch,n_classes=5).to(args.device)
+    if args.backbone=='resnet18':
+        model = HemoResNet18(in_channels=args.ch,n_classes=5).to(args.device)
+    elif args.backbone=='resnet50':
+        model = HemoResNet50(in_channels=args.ch,n_classes=5).to(args.device)
 
     # loss
-    weight = torch.tensor([2.93, 2.05, 2.90, 4.12, 1.0])
     pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03])
-    bce_loss = nn.BCEWithLogitsLoss(weight=weight,
-                            pos_weight=pos_weight).to(args.device)
+    bce_loss = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
     # optimizer & lr schedule
-    optimizer = optim.Adam(model.parameters(), 
-                            args.lr, weight_decay=args.weight_decay)
-    
+    #optimizer = optim.Adam(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    optimizer = optim.SGD(model.parameters(), args.lr)
+
     step_after = optim.lr_scheduler.CosineAnnealingLR(
                                     optimizer, T_max=args.epochs, 
                                     eta_min=args.eta_min, last_epoch=-1)
@@ -52,7 +53,7 @@ def train(args, dataset):
 
         lr_scheduler.step()
         
-        train_loss, valid_loss, train_acc, valid_acc, train_f2 =\
+        train_loss, valid_loss, train_acc, train_recall, train_f2=\
                 [Averager() for i in range(5)]
         
         # training
@@ -64,25 +65,26 @@ def train(args, dataset):
             preds = model(imgs)
 
             loss = bce_loss(preds, lbls)
-            acc = accuracy(preds, lbls)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
+            
+            preds = torch.sigmoid(preds)
             metric = hemorrhage_metrics(preds.cpu().detach().numpy(),
                                         lbls.cpu().detach().numpy())
             train_loss.add(loss.item())
-            train_acc.add(acc)
+            train_acc.add(metric['acc'])
+            train_recall.add(metric['recall'])
             train_f2.add(metric['f2'])
-            wandb.log({'train_loss': loss.item(), 'train_acc': acc,
-                        'train_f2': metric['f2']})
-            print("\t[%d/%d] loss:%.2f acc:%.2f f2:%.2f" % (
+            wandb.log({'train_loss': loss.item(), 'train_acc': metric['acc'],
+                'train_recall': metric['recall'], 'train_f2': metric['f2']})
+            print("\t[%d/%d] loss:%.2f acc:%.2f recall:%.2f f2:%.2f" % (
                     idx, len(train_loader), train_loss.item(), 
-                    train_acc.item(), train_f2.item()),
+                    train_acc.item(), train_recall.item(), train_f2.item()),
                 end='  \r')
-        print("\t Train loss:%.4f, acc:%.3f, f2:%.3f" % (
-            train_loss.item(), train_acc.item(), train_f2.item()))
+        print("\t Train loss:%.4f, acc:%.3f, recall:%.3f, f2:%.3f" % (
+            train_loss.item(), train_acc.item(), train_recall.item(), train_f2.item()))
 
         # validating
         model.eval()
@@ -95,7 +97,8 @@ def train(args, dataset):
                 preds = model(imgs)
 
             loss = bce_loss(preds, lbls)
-            
+           
+            preds = torch.sigmoid(preds)
             val_pred.append(preds.cpu().detach().numpy())
             val_lbls.append(lbls.cpu().detach().numpy())
 
@@ -103,20 +106,20 @@ def train(args, dataset):
             print("\t[%d/%d] loss:%.2f" % (
                 idx, len(valid_loader), valid_loss.item()),
                 end='  \r')
-
+        
         val_metric = hemorrhage_metrics(np.concatenate(val_pred),
                                         np.concatenate(val_lbls))
-        wandb.log({'valid_loss': loss.item(), 
+        wandb.log({'valid_loss': loss.item(), 'valid_acc': val_metric['acc'],
+                   'valid_recall': val_metric['recall'], 
                    'valid_f2': val_metric['f2']})
-        print("\t Valid loss:%.4f, f2:%.3f" % 
-                (valid_loss.item(), val_metric['f2']))
+        print("\t Valid loss:%.4f, acc:%.3f, recall:%.3f, f2:%.3f" % 
+                (valid_loss.item(), val_metric['acc'], val_metric['recall'], val_metric['f2']))
 
         if val_metric['f2'] > best_valid_f2:
             best_valid_f2 = val_metric['f2']
             path = f"./checkpoints/{args.backbone}"
             os.system(f'mkdir -p {path}')
-            torch.save(model.state_dict(),
-                f"{path}/best.pth")
+            torch.save(model.state_dict(),f"{path}/best.pth")
             print("\t save weight")
 
 
