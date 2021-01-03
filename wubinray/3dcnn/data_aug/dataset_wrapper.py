@@ -18,7 +18,6 @@ np.random.seed(87)
 torch.manual_seed(87)
 
 img_size=256
-img_size=512
 
 # ich,ivh,sah,sdh,edh
 
@@ -32,106 +31,84 @@ class BloodDataset_Test(Dataset):
                 transforms.Normalize(mean=[0.5]*self.ch,std=[0.5]*self.ch)
             ]) 
         
-        self.data = []
-        self.dirs = glob.glob(path+"/*")
-        for _p_dir in sorted(self.dirs):
-            _id = _p_dir.replace(self.path, "").lstrip("/")
-            imgs = glob.glob(_p_dir+"/*.jpg")
-            for img in sorted(imgs):
-                _dir = _p_dir.replace(path,"") # dir ex:ID_3bffxae
-                _fname = img.replace(_p_dir, "").lstrip("/") # fname ex:3bffxae_3.jpg
-                _uid = _fname[:_fname.find('_')] # uid ex:3bffxae
-                _idx = int(_fname[_fname.find('_')+1:_fname.find('.jpg')]) # idx ex:3
-                self.data.append((_dir, _fname, _uid, _idx))
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        _dir, _fname, _uid, _idx = self.data[idx]
-        if self.ch==1:
-            img_path = os.path.join(self.path,_dir,_fname)
-            img = Image.open(img_path).resize((img_size,img_size))
-            img = self.trans(img)
-            return img, _dir, _fname
-        else:
-            stack = []
-            for i in range(self.ch):
-                img_path = os.path.join(self.path,_dir,f"{_uid}_{_idx+i-self.ch//2}.jpg")
-                if not os.path.exists(img_path):
-                    img_path = os.path.join(self.path,_dir,_fname)
-                img = Image.open(img_path).resize((img_size,img_size))
-                img = np.array(img).astype(np.uint8)
-                stack.append(img)
-            stack = np.stack(stack, axis=-1)
-            img = Image.fromarray(stack)
-            img = self.trans(img)
-            return img, _dir, _fname
+        pass
 
 class BloodDataset(Dataset):
-    def __init__(self, path, dirs, trans, ch=1):
-        assert ch%2==1
-
-        df = pd.read_csv(path.rstrip('/')+".csv")
+    def __init__(self, path, dirs, trans, t=32):
+        train_df = pd.read_csv(path.rstrip('/')+".csv")
         
         self.path = path
-        self.dirs = dirs 
         self.trans = trans 
-        self.ch = ch 
+        self.t = t
         
         self.data = []
-        self.label = []
+        
         for _dir in dirs:
-            sub_df = df.loc[df['dirname']==_dir]
-            for row in sub_df.to_numpy():
-                _dir, _fname = row[:2]
-                self.data.append((_dir, # ex: ID_3bfxedafae
-                                  _fname, # ex: 3bfxedafae_3.jpg
-                                  _fname[:_fname.find('_')], # ex:3bfxedafae
-                                  int(_fname[_fname.find('_')+1:_fname.find('.jpg')])) # ex:3
-                                )
-                self.label.append(row[2:])
-        self.label = np.stack(self.label, axis=0)
+            sub_df = train_df.loc[train_df['dirname']==_dir]
+            
+            _fnames, lbls = sub_df['ID'], sub_df.to_numpy()[:,2:]
+            
+            self.data.append((_dir, _fnames, lbls)) #(1,t,(t,class))
     
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, idx):
-        _dir, _fname, _uid, _idx = self.data[idx]
-        if self.ch==1:
-            img_path = os.path.join(self.path,_dir,f"{_uid}_{_idx}.jpg")
+        _dir, _fnames, label = self.data[idx]
+        stack = []
+        for f in _fnames:
+            img_path = self.path + f"{_dir}/{f}"
             img = Image.open(img_path).resize((img_size,img_size))
             img = self.trans(img)
-            return img, self.label[idx].astype(np.bool)
-        else:
-            stack = []
-            for i in range(self.ch):
-                img_path = os.path.join(self.path,_dir,f"{_uid}_{_idx+i-self.ch//2}.jpg")
-                if not os.path.exists(img_path):
-                    img_path = os.path.join(self.path,_dir,f"{_uid}_{_idx}.jpg")
-                img = Image.open(img_path).resize((img_size,img_size))
-                img = np.array(img).astype(np.uint8)
-                stack.append(img)
-            stack = np.stack(stack, axis=-1)
-            img = Image.fromarray(stack)
-            img = self.trans(img)
-            return img, self.label[idx].astype(np.bool)
+            stack.append(img)
+        stack = np.stack(stack, axis=1)
+        
+        label = label.astype(np.bool)
+
+        stack = torch.tensor(stack) # (1,t,h,w)
+        label = torch.tensor(label) # (t,class)
+        return stack, label
 
     def collate_fn(self, samples):
-        batch_imgs, batch_lbls = [],[]
-        for img, lbl in samples:
-            batch_imgs.append(img.unsqueeze(0))
+        t_max = max([stack.shape[1] for stack,_ in samples])
+        
+        batch_imgs, batch_lbls, batch_mask = [],[],[]
+        for stack, label in samples:
+            # stack:(1,t,h,w), label:(t,class)
+            t, cls = label.shape 
+            
+            # img
+            img = torch.zeros(1,t_max,img_size,img_size)
+            img[:,:t] = stack
+            
+            # lbl
+            lbl = torch.zeros(t_max, cls).bool()
+            lbl[:t] = label 
+            
+            # mask
+            mask = [1]*t + [0]*(t_max-t)
+            mask = torch.tensor(mask)
+
+            batch_imgs.append(img)
             batch_lbls.append(lbl)
-        batch_imgs = torch.cat(batch_imgs,dim=0)
-        batch_lbls = torch.tensor(batch_lbls).float()
-        return batch_imgs, batch_lbls
+            batch_mask.append(mask)
+        
+        batch_imgs = torch.stack(batch_imgs,dim=0) # (b,1,t_max,h,w)
+        batch_lbls = torch.stack(batch_lbls,dim=0) # (b,t_max,class)
+        batch_mask = torch.stack(batch_mask,dim=0) # (b,t_max)
+        return batch_imgs, batch_lbls, batch_mask 
     
     @staticmethod 
     def get_transform(ch=1):
         train_trans = transforms.Compose([
                 transforms.Resize(img_size),
                 transforms.RandomRotation(10),
-                transforms.RandomHorizontalFlip(),
+                #transforms.RandomHorizontalFlip(),
                 #transforms.RandomApply([
                 #        transforms.ColorJitter()
                 #    ],p=0.1),
@@ -158,12 +135,12 @@ class DatasetWrapper(object):
         # split train dirs
         dirs = os.listdir(self.path)
         np.random.shuffle(dirs)
-        split = int(len(dirs) * (1-self.valid_size))
+        split = int(len(dirs)*(1-self.valid_size))
         train_dirs, valid_dirs = dirs[:split], dirs[split:]
         
         # data aug
         train_trans, valid_trans = BloodDataset.get_transform(self.ch)
-
+    
         # dataset
         train_dataset = BloodDataset(self.path, train_dirs, train_trans, self.ch)
         valid_dataset = BloodDataset(self.path, valid_dirs, valid_trans, self.ch)

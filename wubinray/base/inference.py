@@ -1,5 +1,5 @@
 from data_aug.dataset_wrapper import BloodDataset_Test, DataLoader
-from models.resnet import HemoResNet18
+from models.resnet import HemoResNet18, HemoResNet50
 
 import csv
 import argparse
@@ -12,8 +12,10 @@ import torch.nn.functional as F
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--ch', type=int, default=3,
+parser.add_argument('--ch', type=int, default=1,
                     help='input channels how many picture')
+parser.add_argument('--backbone', type=str, default='resnet19',
+                    help='backbone used')
 parser.add_argument('--model_path', type=str, default='./checkpoints/resnet18/best.pth',
                     help='trained model pth path')
 parser.add_argument('--pred_csv_path', type=str, default='./pred.csv',
@@ -30,7 +32,10 @@ def inference():
     test_dataset = BloodDataset_Test(path="/media/disk1/aa/Blood_data/test/", ch=args.ch)
     test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers = 8)
     
-    model = HemoResNet18(in_channels=args.ch, n_classes=5)
+    if args.backbone=='resnet18':
+        model = HemoResNet18(in_channels=args.ch, n_classes=5)
+    elif args.backbone=='resnet50':
+        model = HemoResNet50(in_channels=args.ch, n_classes=5)
     model.load_state_dict(torch.load(args.model_path,map_location='cpu'))
     model.eval().to(args.device)
 

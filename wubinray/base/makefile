@@ -1,9 +1,19 @@
+BACKBONE=resnetxx
+THRESHOLD=0.5
+CH=3
 
-train:
-	python3 train.py --bsize 64 --ch 3 --device cuda:1
+train_resnet18: 
+	$(eval BACKBONE=resnet18)
+	python3 train.py --backbone $(BACKBONE) --bsize 16 --ch $(CH) --device cuda:1
+	$(MAKE) submit BACKBONE=resnet18 
 
-submit_test:
-	python3 inference.py --model_path ./checkpoints/resnet18/best.pth --pred_csv_path ./pred.csv --threshold 0.5 --device cuda:0
+train_resnet50:
+	$(eval BACKBONE=resnet50)
+	python3 train.py --backbone $(BACKBONE) --bsize 32 --ch $(CH) --device cuda:1
+	$(MAKE) submit BACKBONE=resnet50 
+
+submit:
+	python3 inference.py --ch $(CH) --backbone $(BACKBONE) --model_path ./checkpoints/resnet18/best.pth --pred_csv_path ./pred.csv --threshold $(THRESHOLD) --device cuda:1
 	python3 to_kaggle.py --pred_csv_path ./pred.csv --out_csv_path ./submit.csv 
 	rm ./pred.csv 
 
