@@ -55,8 +55,12 @@ def ta_convert(in_csv, out_csv):
         for row in output_rows:
             writer.writerow({'ID': row[0], 'prediction': row[1]})
 
-def get_weight(train_csv_path="./Blood_data/train.csv"):
-    train_df = pd.read_csv("./Blood_data/train.csv")
+def get_weight(train_csv_path="./Blood_data/train.csv", pt_restriction=[]):
+    train_df = pd.read_csv(train_csv_path)
+    if len(pt_restriction) > 0:
+        assert isinstance(pt_restriction, np.ndarray)
+        df_pt_select = pd.DataFrame({"pt":pt_restriction})
+        train_df = pd.merge(train_df, df_pt_select, how="inner", left_on="dirname", right_on="pt", left_index=False, right_index=False, sort=True, copy=True, indicator=False, validate=None).drop(columns="pt")
     pos_each_class = train_df[["ich", "ivh", "sah", "sdh", "edh"]].sum().values
     neg_each_class = len(train_df) - pos_each_class
     weight = neg_each_class / pos_each_class
