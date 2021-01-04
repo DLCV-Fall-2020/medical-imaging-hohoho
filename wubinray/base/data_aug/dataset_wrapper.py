@@ -34,15 +34,16 @@ class BloodDataset_Test(Dataset):
         
         self.data = []
         self.dirs = glob.glob(path+"/*")
-        for _p_dir in sorted(self.dirs):
-            _id = _p_dir.replace(self.path, "").lstrip("/")
-            imgs = glob.glob(_p_dir+"/*.jpg")
-            for img in sorted(imgs):
-                _dir = _p_dir.replace(path,"") # dir ex:ID_3bffxae
-                _fname = img.replace(_p_dir, "").lstrip("/") # fname ex:3bffxae_3.jpg
-                _uid = _fname[:_fname.find('_')] # uid ex:3bffxae
-                _idx = int(_fname[_fname.find('_')+1:_fname.find('.jpg')]) # idx ex:3
-                self.data.append((_dir, _fname, _uid, _idx))
+        
+        dirs = os.listdir(path)
+        for _dir in sorted(dirs):
+            files = os.listdir(os.path.join(path,_dir))
+            for _fname in files:
+                self.data.append((_dir, # ex: ID_3bfxedafae 
+                                  _fname, # ex: 3bfxedafae_3.jpg 
+                                  _fname[:_fname.find('_')], # ex: 3bfxedafae 
+                                  int(_fname[_fname.find('_')+1:_fname.find('.jpg')])) # ex:3
+                                )
 
     def __len__(self):
         return len(self.data)
