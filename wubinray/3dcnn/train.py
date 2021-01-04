@@ -97,6 +97,13 @@ def train(args, dataset):
                 end='  \r')
         print("\t Valid Loss:%.4f "%(valid_loss.item()))
 
+        if valid_loss.item() < best_valid_loss:
+            best_valid_loss = valid_loss.item()
+            path=f"./checkpoints/{args.backbone}"
+            os.system(f"mkdir -p {path}")
+            torch.save(model.state_dict(), f"{path}/best.pth")
+            print("\t save weight")
+
 if __name__=='__main__':
     args = parse_args()
 
