@@ -11,6 +11,7 @@ class HemoResNet18(nn.Module):
                                      stride=2, padding=3,bias=False)
         resnet.fc = nn.Sequential(
             nn.Dropout(p=0.5),
+            nn.ReLU(True),
             nn.Linear(in_features=resnet.fc.in_features, out_features=n_classes)
         )
         self.base_model = resnet

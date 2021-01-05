@@ -1,5 +1,6 @@
 from data_aug.dataset_wrapper import DatasetWrapper
 from models.resnet import HemoResNet18, HemoResNet50, HemoResnext50 
+from loss.focal_loss import AsymmetricLoss, AsymmetricLossOptimized
 from utils.others import Averager
 from utils.args import parse_args 
 from utils.warmup import WarmupScheduler 
@@ -33,11 +34,13 @@ def train(args, dataset):
 
     # loss
     pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03])
-    bce_loss = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
+    #loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
+    loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=4, pos_weight=pos_weight)
 
     # optimizer & lr schedule
-    #optimizer = optim.Adam(model.parameters(), args.lr, weight_decay=args.weight_decay)
-    optimizer = optim.SGD(model.parameters(), args.lr)
+    optimizer = optim.Adam(model.parameters(), args.lr, 
+                        weight_decay=args.weight_decay)
+    #optimizer = optim.SGD(model.parameters(), args.lr)
 
     step_after = optim.lr_scheduler.CosineAnnealingLR(
                                     optimizer, T_max=args.epochs, 
@@ -64,10 +67,11 @@ def train(args, dataset):
             
             preds = model(imgs)
 
-            loss = bce_loss(preds, lbls)
+            loss = loss_f(preds, lbls)
 
             optimizer.zero_grad()
             loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), 0.1)
             optimizer.step()
             
             preds = torch.sigmoid(preds)
@@ -96,7 +100,7 @@ def train(args, dataset):
             with torch.no_grad():
                 preds = model(imgs)
 
-            loss = bce_loss(preds, lbls)
+            loss = loss_f(preds, lbls)
            
             preds = torch.sigmoid(preds)
             val_pred.append(preds.cpu().detach().numpy())
