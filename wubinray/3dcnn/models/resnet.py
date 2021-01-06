@@ -2,6 +2,8 @@ import torchvision.models as models
 import torch.nn as nn
 import torch
 
+__all__ = ["HemoResNet18", "HemoResNet50", "HemoResnext50"]
+
 class HemoResNet18(nn.Module):
     def __init__(self, in_channels = 3, n_classes=5):
         super().__init__()
@@ -11,7 +13,6 @@ class HemoResNet18(nn.Module):
                                      stride=2, padding=3,bias=False)
         resnet.fc = nn.Sequential(
             nn.Dropout(p=0.5),
-            nn.ReLU(True),
             nn.Linear(in_features=resnet.fc.in_features, out_features=n_classes)
         )
         self.base_model = resnet
