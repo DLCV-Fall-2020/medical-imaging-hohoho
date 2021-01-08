@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
 train_df = pd.read_csv("../Blood_data/train.csv")
-detect_pattern = ["101","1001","10001"]
+#detect_pattern = ["101","1001","10001"]
+detect_pattern = ["101", "1001"]
 count = 0
 
-with open('../Blood_data/anomaly_ID_partial_noncontinuous.csv','w') as f:
-    f.write('ID, subtype, pattern\n')
+with open('../data_filtered/anomaly_ID_partial_noncontinuous.csv','w') as f:
+    f.write('ID,subtype,pattern\n')
     for subtype in ["ich", "ivh", "sah", "sdh", "edh"]:
         print(f"============ Subtype {subtype} ===============")
         for name, group in train_df.groupby("dirname"):
