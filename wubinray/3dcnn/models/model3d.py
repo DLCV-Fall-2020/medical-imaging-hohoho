@@ -13,15 +13,15 @@ class HemoModel3d(nn.Module):
         # backbone
         kwargs = dict(in_channels=in_channels, hidd_dim=hidd_dim)
         if backbone=="resnet10_3d":
-            self.backbone = resnet10_3d(**kwargs)
+            self.backbone = nn.DataParallel(resnet10_3d(**kwargs))
         elif backbone=="resnet18_3d":
-            self.backbone = resnet18_3d(**kwargs)
+            self.backbone = nn.DataParallel(resnet18_3d(**kwargs))
 
         # proj
         self.projector = nn.Sequential(
                     #nn.Linear(hidd_dim, hidd_dim),
-                    #nn.ReLU(True),
                     nn.Dropout(0.5),
+                    nn.ReLU(True),
                     nn.Linear(hidd_dim, proj_dim)
                 )
     

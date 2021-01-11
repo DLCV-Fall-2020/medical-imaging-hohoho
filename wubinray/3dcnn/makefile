@@ -3,12 +3,12 @@ THRESHOLD=0.5
 
 train_resnet10_3d: 
 	$(eval BACKBONE=resnet10_3d)
-	python3 train.py --backbone $(BACKBONE) --bsize 4 --device cuda:0
+	python3 train.py --backbone $(BACKBONE) --bsize 16 --device cuda:0
 	$(MAKE) submit BACKBONE=resnet10_3d
 
 train_resnet18_3d:
 	$(eval BACKBONE=resnet18_3d)
-	python3 train.py --backbone $(BACKBONE) --bsize 32 --device cuda:0
+	python3 train.py --backbone $(BACKBONE) --bsize 16 --device cuda:0
 	$(MAKE) submit BACKBONE=resnet18_3d
 
 submit:
