@@ -95,15 +95,24 @@ class AsymmetricLossOptimized(nn.Module):
         # Asymmetric Clipping
         if self.clip is not None and self.clip > 0:
             self.xs_neg.add_(self.clip).clamp_(max=1)
-
+        
+        # pos weight
+        '''
+        if self.pos_weight is not None:
+            self.targets2 = self.targets.clone() * \
+                            self.pos_weight.to(self.targets.device)
+        else:
+            self.targets2 = self.targets 
+        '''
+        
         # Basic CE calculation
         self.loss = self.targets * torch.log(self.xs_pos.clamp(min=self.eps))
         self.loss.add_(self.anti_targets * torch.log(self.xs_neg.clamp(min=self.eps)))
 
-        # pos weight
-        if self.pos_weight is not None:
-            self.targets = self.targets.clone() * \
-                           self.pos_weight.to(self.targets.device)
+        ## pos weight
+        #if self.pos_weight is not None:
+        #    self.targets = self.targets.clone() * \
+        #                   self.pos_weight.to(self.targets.device)
 
         # Asymmetric Focusing
         if self.gamma_neg > 0 or self.gamma_pos > 0:

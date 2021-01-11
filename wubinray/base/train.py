@@ -21,6 +21,13 @@ np.random.seed(87)
 torch.manual_seed(87)
 torch.cuda.manual_seed_all(87)
 
+try:
+    from apex import amp
+    apex_support = True
+except:
+    print("\t[Info] apex is not supported")
+    apex_support = False 
+
 def train(args, dataset):
     
     # dataloader
@@ -49,6 +56,13 @@ def train(args, dataset):
                                     total_epoch = args.warmup_epochs,
                                     after_scheduler = step_after)
     
+    # ap_fix16
+    use_fp16 = apex_support and args.fp16_precision
+    if use_fp16:
+        print(" Use fp16_precision")
+        model, optimizer = amp.initialize(model, optimizer,
+                opt_level='O2', keep_batchnorm_fp32=True, verbosity=0)
+
     # start training
     best_valid_f2 = 0
     for epoch in range(1,args.epochs+1):
@@ -70,7 +84,11 @@ def train(args, dataset):
             loss = loss_f(preds, lbls)
 
             optimizer.zero_grad()
-            loss.backward()
+            if use_fp16:
+                with amp.scale_loss(loss, optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            else:
+                loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), 0.1)
             optimizer.step()
             

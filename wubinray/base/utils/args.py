@@ -3,11 +3,11 @@ import argparse
 def parse_args(string=None):
     parser = argparse.ArgumentParser(description='Blood_Base')
     # train args
-    parser.add_argument('--bsize', type=int, default=32,
+    parser.add_argument('--bsize', type=int, default=48,
                         help="batch size")
-    parser.add_argument('--warmup_epochs', type=int, default=1,
+    parser.add_argument('--warmup_epochs', type=int, default=10,
                         help="lr warmup epochs")
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=10,
                         help="epochs")
     parser.add_argument('--num_workers', type=int, default=5,
                         help="dataloader workers")
@@ -17,10 +17,10 @@ def parse_args(string=None):
                         help="train on fp16")
     # dataset
     parser.add_argument('--ch', type=int, default=1,
-                        help="input channel, how many img to one sample")
+                    help="input channel, how many img to one sample")
     parser.add_argument('--img_size', type=int, default=512,
                         help="input img size")
-    parser.add_argument('--valid_size', type=float, default=0.15,
+    parser.add_argument('--valid_size', type=float, default=0.1,
                         help="valid split %")
     parser.add_argument('--num_classes', type=int, default=5,
                         help="dataset classes")
@@ -38,7 +38,7 @@ def parse_args(string=None):
     # optimizer
     parser.add_argument('--lr', type=float, default=2e-4, #1e-2
                         help="learning rate")
-    parser.add_argument('--eta_min', type=float, default=1e-5,
+    parser.add_argument('--eta_min', type=float, default=5e-5,
                         help="cosin annealing to lr=eta_min")
     parser.add_argument('--weight_decay', type=float, default=1e-4,
                         help="LARS optimizer weight_decay")
