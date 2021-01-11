@@ -73,7 +73,8 @@ class BloodDataset(Dataset):
     def __init__(self, path, dirs, trans, ch=1):
         assert ch%2==1
 
-        df = pd.read_csv(path.rstrip('/')+".csv")
+        #df = pd.read_csv(path.rstrip('/')+".csv")
+        df = pd.read_csv(path.rstrip('/')+"_clean.csv")
         
         self.path = path
         self.dirs = dirs 

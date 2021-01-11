@@ -64,7 +64,7 @@ def train(args, dataset):
                 opt_level='O2', keep_batchnorm_fp32=True, verbosity=0)
     
     # start training
-    best_valid_loss = np.inf
+    best_valid_f2 = -np.inf
     for epoch in range(1, args.epochs+1):
         print(f" Epoch {epoch}")
 
@@ -139,8 +139,8 @@ def train(args, dataset):
                 valid_loss.item(), metric['acc'], metric['recall'], 
                 metric['f2']))
 
-        if valid_loss.item() < best_valid_loss:
-            best_valid_loss = valid_loss.item()
+        if metric['f2'] > best_valid_f2:
+            best_valid_f2 = metric['f2']
             path=f"./checkpoints/{args.backbone}"
             os.system(f"mkdir -p {path}")
             torch.save(model.state_dict(), f"{path}/best.pth")

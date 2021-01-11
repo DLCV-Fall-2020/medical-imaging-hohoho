@@ -54,9 +54,9 @@ class BloodDataset_Test(Dataset):
         stack = np.stack(stack, axis=1)
         stack = torch.tensor(stack) # (1,t,h,w)
         
-        index_selec = _fnames.index(_fname)
+        index_select = _fnames.index(_fname)
 
-        return stack, index_selec, _fname 
+        return stack, index_select, _fname 
 
     def collate_fn(self, sample):
         pass 
@@ -74,8 +74,9 @@ class BloodDataset_Test(Dataset):
 
 class BloodDataset(Dataset):
     def __init__(self, path, dirs, trans, t=32):
-        train_df = pd.read_csv(path.rstrip('/')+".csv")
-        
+        #train_df = pd.read_csv(path.rstrip('/')+".csv")
+        train_df = pd.read_csv(path.rstrip('/')+"_clean.csv")
+
         self.path = path
         self.trans = trans 
         self.t = t
