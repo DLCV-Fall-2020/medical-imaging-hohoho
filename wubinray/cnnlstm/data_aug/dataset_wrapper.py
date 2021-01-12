@@ -88,12 +88,7 @@ class BloodDataset(Dataset):
             sub_df = train_df.loc[train_df['dirname']==_dir]
             
             _fnames, lbls = sub_df['ID'].tolist(), sub_df.to_numpy()[:,2:]
-             
-            max_len = len(_fnames)
-            '''
-            for i in range(0, max_len-t):
-                self.data.append((_dir, _fnames[i:i+t], lbls[i:i+t])) 
-            '''
+            
             max_len = len(_fnames)
             for i in range(0, max_len):
                 src = max(0, i-t//2)
