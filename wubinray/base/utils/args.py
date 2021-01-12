@@ -5,9 +5,9 @@ def parse_args(string=None):
     # train args
     parser.add_argument('--bsize', type=int, default=48,
                         help="batch size")
-    parser.add_argument('--warmup_epochs', type=int, default=10,
+    parser.add_argument('--warmup_epochs', type=int, default=5,
                         help="lr warmup epochs")
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=100,
                         help="epochs")
     parser.add_argument('--num_workers', type=int, default=5,
                         help="dataloader workers")
