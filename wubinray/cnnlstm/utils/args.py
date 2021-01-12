@@ -5,7 +5,7 @@ def parse_args(string=None):
     # train args
     parser.add_argument('--bsize', type=int, default=8,
                         help="batch size")
-    parser.add_argument('--warmup_epochs', type=int, default=30,
+    parser.add_argument('--warmup_epochs', type=int, default=5,
                         help="lr warmup epochs")
     parser.add_argument('--epochs', type=int, default=100,
                         help="epochs")
@@ -18,7 +18,7 @@ def parse_args(string=None):
     # dataset
     parser.add_argument('--ch', type=int, default=1,
                         help="input channel, how many img to one sample")
-    parser.add_argument('--t', type=int, default=10,
+    parser.add_argument('--t', type=int, default=3,
                         help="time sequence of image input")
     parser.add_argument('--img_size', type=int, default=512,
                         help="input img size")
@@ -27,7 +27,7 @@ def parse_args(string=None):
     parser.add_argument('--n_classes', type=int, default=5,
                         help="dataset classes")
     # model
-    parser.add_argument('--backbone', type=str, default='resnet10_3d',
+    parser.add_argument('--backbone', type=str, default='resnet18',
                         choices=["resnet18", "resnet34"],
                         help='backbone used')
     parser.add_argument('--pretrained', action="store_true")
@@ -41,7 +41,7 @@ def parse_args(string=None):
     parser.add_argument('--temperature', type=float, default=0.07, #0.07 0.5
                         help="NT-Xent loss temperature")
     # optimizer
-    parser.add_argument('--lr', type=float, default=1e-1,
+    parser.add_argument('--lr', type=float, default=2e-3,
                         help="learning rate")
     parser.add_argument('--eta_min', type=float, default=5e-4,
                         help="cosin annealing to lr=eta_min")
