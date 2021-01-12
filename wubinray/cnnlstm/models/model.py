@@ -1,3 +1,5 @@
+from models.densenet import HemoDenseNet121
+
 import torchvision.models as models 
 import torch.nn as nn
 import torch
@@ -8,26 +10,36 @@ Ref: https://github.com/darraghdog/rsna/blob/master/scripts/trainlstm.py
 
 https://reurl.cc/Ag1egj
 '''
-resnets = {"resnet18": models.resnet18(pretrained=True),
-           "resnet34": models.resnet34(pretrained=True),
-           "resnet50": models.resnet50(pretrained=True)}
+resnets = {"resnet18": models.resnet18,
+           "resnet34": models.resnet34,
+           "resnet50": models.resnet50}
 class HemoCnnLstm(nn.Module):
-    def __init__(self, backbone="resnet18", in_channels=10, n_classes=5):
+    def __init__(self, backbone="resnet18", in_channels=10, n_classes=5, 
+                    pretrained=None):
         super().__init__()
 
         hidden_dim=256
         rnncell_dim=64
         
-        self.resnet = resnets[backbone]
-        self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7,
-                                    stride=2, padding=3, bias=False)
+        if "resnet" in backbone:  
+            resnet = resnets[backbone](pretrained=True)
+            resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7,
+                                        stride=2, padding=3, bias=False)
+            self.cnn_net = resnet 
+            in_features = resnet.fc.in_features 
+        elif "densnet121" is backbone:
+            densnet = HemoDenseNet121(1, n_classes)
+            densnet.load_state_dict(
+                            torch.load(pretrained,map_location="cpu"))
+            self.cnn_net = densnet.base_model 
+            
+            in_features = densnet.base_model.classifier.in_features 
 
-        self.backbone = nn.Sequential(*list(self.resnet.children())[:-1])
+        self.backbone = nn.Sequential(*list(self.cnn_net.children())[:-1])
         self.backbone = nn.DataParallel(self.backbone)
-
+        
         self.project = nn.Sequential(
-                nn.ReLU(True),
-                nn.Linear(self.resnet.fc.in_features, hidden_dim),
+                nn.Linear(in_features, hidden_dim),
                 nn.ReLU(True),
                 nn.Dropout(p=0.5),
             )

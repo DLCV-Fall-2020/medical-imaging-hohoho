@@ -27,14 +27,17 @@ def parse_args(string=None):
     parser.add_argument('--n_classes', type=int, default=5,
                         help="dataset classes")
     # model
-    parser.add_argument('--backbone', type=str, default='resnet18',
-                        choices=["resnet18", "resnet34"],
+    parser.add_argument('--backbone', type=str, default='densnet121',
+                        choices=["densnet121","resnet18", "resnet34"],
                         help='backbone used')
     parser.add_argument('--pretrained', action="store_true")
     parser.add_argument('--hidd_dim', type=int, default=128,
                         help='resnet3d output dimension')
     parser.add_argument('--proj_dim', type=int, default=32,
                         help="project head projected dimension")
+    parser.add_argument('--load_pretrained', type=str, 
+                        default='./chechpoints/best.pth',
+                        help="load pretraind pth path")
     # loss
     parser.add_argument('--use_cos_similarity', action="store_true",
                         help="calculate loss use cosine similairty")

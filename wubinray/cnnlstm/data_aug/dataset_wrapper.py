@@ -55,7 +55,7 @@ class BloodDataset_Test(Dataset):
         stack = torch.tensor(stack) # (1,t,h,w)
         
         index_select = _fnames.index(_fname)
-
+        
         return stack, index_select, _fname 
 
     def collate_fn(self, sample):
@@ -73,7 +73,8 @@ class BloodDataset_Test(Dataset):
  
 
 class BloodDataset(Dataset):
-    def __init__(self, path, dirs, trans, t=32):
+    def __init__(self, path, dirs, trans, t=3):
+        assert t%2==1 
         train_df = pd.read_csv(path.rstrip('/')+".csv")
         #train_df = pd.read_csv(path.rstrip('/')+"_clean.csv")
 
@@ -86,18 +87,25 @@ class BloodDataset(Dataset):
         for _dir in dirs:
             sub_df = train_df.loc[train_df['dirname']==_dir]
             
-            _fnames, lbls = sub_df['ID'], sub_df.to_numpy()[:,2:]
-           
+            _fnames, lbls = sub_df['ID'].tolist(), sub_df.to_numpy()[:,2:]
+             
             max_len = len(_fnames)
-
+            '''
             for i in range(0, max_len-t):
                 self.data.append((_dir, _fnames[i:i+t], lbls[i:i+t])) 
-    
+            '''
+            max_len = len(_fnames)
+            for i in range(0, max_len):
+                src = max(0, i-t//2)
+                end = src + t
+                self.data.append((_dir, 
+                            _fnames[i], _fnames[src:end], lbls[src:end]))
+            
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, idx):
-        _dir, _fnames, label = self.data[idx]
+        _dir, _fname, _fnames, label = self.data[idx]
         stack = []
         for f in _fnames:
             img_path = self.path + f"{_dir}/{f}"
@@ -106,8 +114,11 @@ class BloodDataset(Dataset):
             stack.append(img)
         stack = np.stack(stack, axis=1)
         
+        index_select = _fnames.index(_fname)        
         label = label.astype(np.bool)
 
+        #TODO: label smoothing
+        
         stack = torch.tensor(stack) # (1,t,h,w)
         label = torch.tensor(label) # (t,class)
         return stack, label
