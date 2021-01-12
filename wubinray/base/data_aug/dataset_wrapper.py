@@ -73,8 +73,8 @@ class BloodDataset(Dataset):
     def __init__(self, path, dirs, trans, ch=1):
         assert ch%2==1
 
-        #df = pd.read_csv(path.rstrip('/')+".csv")
-        df = pd.read_csv(path.rstrip('/')+"_clean.csv")
+        df = pd.read_csv(path.rstrip('/')+".csv")
+        #df = pd.read_csv(path.rstrip('/')+"_clean.csv")
         
         self.path = path
         self.dirs = dirs 
@@ -135,7 +135,7 @@ class BloodDataset(Dataset):
                 transforms.RandomRotation(20),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomApply([
-                        transforms.ColorJitter(0.1,0.1,0.1,0)
+                        transforms.ColorJitter(0.2,0.2,0.2,0)
                     ],p=0.7),
                 #GaussianBlur(kernel_size=int(0.01 * img_size)),
                 transforms.ToTensor(),

@@ -74,8 +74,8 @@ class BloodDataset_Test(Dataset):
 
 class BloodDataset(Dataset):
     def __init__(self, path, dirs, trans, t=32):
-        #train_df = pd.read_csv(path.rstrip('/')+".csv")
-        train_df = pd.read_csv(path.rstrip('/')+"_clean.csv")
+        train_df = pd.read_csv(path.rstrip('/')+".csv")
+        #train_df = pd.read_csv(path.rstrip('/')+"_clean.csv")
 
         self.path = path
         self.trans = trans 
