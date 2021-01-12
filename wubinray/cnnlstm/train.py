@@ -44,9 +44,11 @@ def train(args, dataset):
     loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
     # optimizer 
-    #optimizer = optim.SGD(model.parameters(), args.lr)
-    optimizer = optim.Adam(model.parameters(), args.lr, 
+    optimizer1 = optim.Adam(model.parameters(), args.lr, 
                             weight_decay=args.weight_decay)
+    optimizer2 = optim.SGD(model.parameters(), args.lr,
+                            args.momentum)
+    optimizer = optimizer1
 
     # lr scheduler
     step_after = optim.lr_scheduler.CosineAnnealingLR(
@@ -72,6 +74,10 @@ def train(args, dataset):
 
         train_loss, valid_loss, train_acc, train_recall, train_f2 =\
                     [Averager() for i in range(5)]
+
+        # change optimizer stage policy
+        if True or epoch > args.epoch*0.7:
+            lr_scheduler.after_scheduler.optimizer = optimizer2
         
         # train
         model.train()

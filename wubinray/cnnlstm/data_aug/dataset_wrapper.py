@@ -145,8 +145,8 @@ class BloodDataset(Dataset):
     def get_transform(ch=1):
         train_trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomRotation(10),
-                #transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(20, fill=(0,)), 
+                transforms.RandomHorizontalFlip(),
                 transforms.RandomApply([
                         transforms.ColorJitter(0.1,0.1,0.1,0)
                     ],p=0.7),
