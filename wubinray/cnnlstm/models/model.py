@@ -15,6 +15,9 @@ class HemoCnnLstm(nn.Module):
     def __init__(self, backbone="resnet18", in_channels=10, n_classes=5):
         super().__init__()
 
+        hidden_dim=256
+        rnncell_dim=64
+        
         self.resnet = resnets[backbone]
         self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7,
                                     stride=2, padding=3, bias=False)
@@ -22,14 +25,21 @@ class HemoCnnLstm(nn.Module):
         self.backbone = nn.Sequential(*list(self.resnet.children())[:-1])
         self.backbone = nn.DataParallel(self.backbone)
 
-        self.lstm = nn.LSTM(self.resnet.fc.in_features, 64, 
+        self.project = nn.Sequential(
+                nn.ReLU(True),
+                nn.Linear(self.resnet.fc.in_features, hidden_dim),
+                nn.ReLU(True),
+                nn.Dropout(p=0.5),
+            )
+
+        self.rnn = nn.GRU(hidden_dim, rnncell_dim,
                             bidirectional=True, batch_first=True)
-        #self.lstm = nn.DataParallel(self.lstm)
+        #self.rnn = nn.DataParallel(self.lstm)
 
         self.fc = nn.Sequential(
                 nn.Dropout(p=0.5),
                 nn.ReLU(True),
-                nn.Linear(64*2, n_classes)
+                nn.Linear(rnncell_dim*2, n_classes)
             )
 
     def forward(self, x):
@@ -39,11 +49,11 @@ class HemoCnnLstm(nn.Module):
 
         h = self.backbone(x)
         h = h.view(b,t,-1)
-        z = h.size(-1)
-
+        h = self.project(h)
+        #z = h.size(-1)
         #h = pack_padded_sequence(h, torch.tensor([b,t+t%2]),
         #                        batch_first=True)
-        h,_ = self.lstm(h) #h:(b,t,z)
+        h,_ = self.rnn(h) #h:(b,t,z)
         #h,_ = pad_packed_sequence(h, torch.tensor([b,t])
         #                        ,batch_first=True)
         
