@@ -76,7 +76,7 @@ def train(args, dataset):
                     [Averager() for i in range(5)]
 
         # change optimizer stage policy
-        if epoch > args.epoch*0.7:
+        if epoch > args.epochs*0.7:
             lr_scheduler.after_scheduler.optimizer = optimizer2
         
         # train
