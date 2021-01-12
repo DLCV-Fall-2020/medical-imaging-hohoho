@@ -2,7 +2,7 @@
 
 #####
 from PIL import Image, ImageOps
-
+#import pdb
 import os
 import glob 
 import torch
@@ -13,7 +13,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import datasets
-
+import math
 np.random.seed(87)
 torch.manual_seed(87)
 
@@ -77,13 +77,12 @@ class BloodDataset(Dataset):
         assert t%2==1 
         train_df = pd.read_csv(path.rstrip('/')+".csv")
         #train_df = pd.read_csv(path.rstrip('/')+"_clean.csv")
-
         self.path = path
         self.trans = trans 
         self.t = t
         self.if_train = if_train
         self.if_smooth = if_smooth
-        
+        self.labels=dict()
         self.data = [] # [ (1,t,(t,class)), ... ] 
         
         for _dir in dirs:
@@ -97,29 +96,32 @@ class BloodDataset(Dataset):
                 end = src + t
                 self.data.append((_dir, 
                             _fnames[i], _fnames[src:end], lbls[src:end]))
-            
+                self.labels.update({_fnames[i] : lbls[src:end]})
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, idx):
         _dir, _fname, _fnames, label = self.data[idx]
+        #print(_dir)
+        #print(_fnames)
         stack = []
         for f in _fnames:
             img_path = self.path + f"{_dir}/{f}"
             img = Image.open(img_path).resize((img_size,img_size))
             img = self.trans(img)
             stack.append(img)
+    
         stack = np.stack(stack, axis=1)
-        
-        index_select = _fnames.index(_fname)        
+        #print(stack)
+        index_select = _fnames.index(_fname)    
         label = label.astype(np.bool)
         stack = torch.tensor(stack) # (1,t,h,w)
 	
         # label smoothing
         if self.if_train and self.if_smooth:
-            index_select = _fnames.index(_fnames[1])
-            all_label = self.data[self.data[:, 0] ==_dir, 2]
+            all_label = self.labels[_fnames[index_select]]
             l = self.weight_smooth(all_label, index_select)
+            #print(l)
             return stack, l
         elif self.if_smooth:
             return stack, label[index_select]
@@ -128,13 +130,11 @@ class BloodDataset(Dataset):
             return stack, label
 
     def weight_smooth(self, all_label, index_select):
-        if index_select > (self.t/2-1):
-            w = np.array([lambda x: 2^(-x) for x in range(self.t)]).reshape(1, all_label.shape[0])
-            return np.dot(w, all_label)
-        else:
-            mid = round(self.t/2)
-            w = np.array([lambda x: 2^(-np.abs(x-mid)) for x in range(self.t)]).reshape(1, all_label.shape[0])
-            return np.dot(w, all_label)
+        w = [math.pow(2,(-np.abs(x-index_select))) for x in range(int(self.t))]
+        w = np.array(w).reshape(-1, all_label.shape[0])
+        #print(f'w={w}')
+        #print(f'all_label = {all_label}')
+        return (np.concatenate(np.dot(w, all_label))/2).astype(int)
                 
     def collate_fn(self, samples):
         t_max = max([stack.shape[1] for stack,_ in samples])
