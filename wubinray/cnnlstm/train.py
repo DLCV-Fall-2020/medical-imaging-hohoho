@@ -41,13 +41,16 @@ def train(args, dataset):
     pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03])
     loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=4, 
                                   pos_weight=pos_weight)
-    loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
+    #loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
     # optimizer 
-    optimizer1 = optim.Adam(model.parameters(), args.lr, 
+    optimizer1 = optim.AdamW(model.parameters(), args.lr, 
                             weight_decay=args.weight_decay)
-    optimizer2 = optim.SGD(model.parameters(), args.lr,
-                            args.momentum)
+    #optimizer1 = optim.Adam(model.parameters(), args.lr, 
+    #                        weight_decay=args.weight_decay)
+    #optimizer2 = optim.SGD(model.parameters(), args.lr,
+    #                        args.momentum)
+    optimizer2 = optimizer1 
     optimizer = optimizer1
 
     # lr scheduler

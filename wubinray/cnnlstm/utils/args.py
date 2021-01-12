@@ -44,9 +44,9 @@ def parse_args(string=None):
     parser.add_argument('--temperature', type=float, default=0.07, #0.07 0.5
                         help="NT-Xent loss temperature")
     # optimizer
-    parser.add_argument('--lr', type=float, default=5e-2,#2e-3,
+    parser.add_argument('--lr', type=float, default=2e-4,#5e-2,#2e-3,
                         help="learning rate")
-    parser.add_argument('--eta_min', type=float, default=2e-5,#5e-4,
+    parser.add_argument('--eta_min', type=float, default=1e-5,#2e-5,#5e-4,
                         help="cosin annealing to lr=eta_min")
     parser.add_argument('--momentum', type=float, default=0.9,
                         help="momentum")
