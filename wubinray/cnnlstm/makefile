@@ -6,7 +6,7 @@ BISZE2=16
 
 train_resnet18_lstm: 
 	$(eval BACKBONE=resnet18)
-	python3 train.py --backbone $(BACKBONE) --bsize $(BSIZE) --t 5 --device $(DEVICE) --fp16_precision
+	python3 train.py --backbone $(BACKBONE) --bsize $(BSIZE) --t 3 --device $(DEVICE) --fp16_precision
 	$(MAKE) submit BACKBONE=resnet18 
 
 train_resnet34_lstm:
