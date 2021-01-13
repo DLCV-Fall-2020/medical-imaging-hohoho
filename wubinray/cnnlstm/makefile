@@ -1,7 +1,7 @@
 BACKBONE=resnetxx_3d
 THRESHOLD=0.5
 DEVICE=cuda 
-BSIZE=6
+BSIZE=4
 
 train_resnet18_lstm: 
 	$(eval BACKBONE=resnet18)
