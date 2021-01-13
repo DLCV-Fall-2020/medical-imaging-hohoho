@@ -45,15 +45,12 @@ def train(args, dataset):
     #loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
     # optimizer 
-    #optimizer1 = optim.AdamW(model.parameters(), args.lr, 
+    optimizer = Ranger(model.parameters(), args.lr)
+    #optimizer = optim.AdamW(model.parameters(), args.lr, 
     #                        weight_decay=args.weight_decay)
-    optimizer1 = Ranger(model.parameters(), args.lr)
-    #optimizer1 = optim.Adam(model.parameters(), args.lr, 
-    #                        weight_decay=args.weight_decay)
-    #optimizer2 = optim.SGD(model.parameters(), args.lr,
+    #optimizer = optim.Adam(model.parameters(), args.lr) 
+    #optimizer = optim.SGD(model.parameters(), args.lr,
     #                        args.momentum)
-    optimizer2 = optimizer1 
-    optimizer = optimizer1
 
     # lr scheduler
     step_after = optim.lr_scheduler.CosineAnnealingLR(
@@ -79,20 +76,19 @@ def train(args, dataset):
 
         train_loss, valid_loss, train_acc, train_recall, train_f2 =\
                     [Averager() for i in range(5)]
-
-        # change optimizer stage policy
-        if epoch > args.epochs*0.7:
-            lr_scheduler.after_scheduler.optimizer = optimizer2
         
         # train
         model.train()
-        for idx, (imgs, lbls) in enumerate(train_loader):
+        for idx, (imgs, lbls, mask) in enumerate(train_loader):
             b,t = imgs.size(0),imgs.size(2)
             imgs = imgs.to(args.device)
             lbls = lbls.to(args.device)
-           
+            mask = mask.to(args.device)
+            
             preds = model(imgs)
             
+            preds = torch.masked_select(preds, mask)
+            lbls = torch.masked_select(lbls, mask)
             loss = loss_f(preds, lbls.float())
 
             optimizer.zero_grad()
@@ -128,12 +124,15 @@ def train(args, dataset):
             b,t = imgs.size(0),imgs.size(2)
             imgs = imgs.to(args.device)
             lbls = lbls.to(args.device)
-
+            mask = mask.to(args.device)
+           
             with torch.no_grad():
                 preds = model(imgs)
-
-            loss = loss_f(preds, lbls.float())
             
+            preds = torch.masked_select(preds, mask)
+            lbls = torch.masked_select(lbls, mask)
+            loss = loss_f(preds, lbls.float())
+
             preds = torch.sigmoid(preds)
             val_pred.append(preds.cpu().detach().numpy())
             val_lbls.append(lbls.cpu().detach().numpy())
@@ -164,8 +163,6 @@ if __name__=='__main__':
 
     dataset = DatasetWrapper("/media/disk1/aa/Blood_data/train/",
                             args.bsize,
-                            args.valid_size,
-                            args.ch,
-                            args.t)
+                            args.valid_size)
     train(args, dataset)
     

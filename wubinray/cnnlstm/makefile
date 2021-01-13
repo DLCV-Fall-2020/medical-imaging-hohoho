@@ -1,17 +1,16 @@
 BACKBONE=resnetxx_3d
 THRESHOLD=0.5
 DEVICE=cuda 
-BSIZE=48
-BISZE2=16
+BSIZE=6
 
 train_resnet18_lstm: 
 	$(eval BACKBONE=resnet18)
-	python3 train.py --backbone $(BACKBONE) --bsize $(BSIZE) --t 3 --device $(DEVICE) --fp16_precision
+	python3 train.py --backbone $(BACKBONE) --bsize $(BSIZE) --device $(DEVICE) --fp16_precision
 	$(MAKE) submit BACKBONE=resnet18 
 
 train_resnet34_lstm:
 	$(eval BACKBONE=resnet34)
-	python3 train.py --backbone $(BACKBONE) --bsize $(BSIZE2) --device cuda --fp16_precision 
+	python3 train.py --backbone $(BACKBONE) --bsize $(BSIZE) --device cuda --fp16_precision 
 	$(MAKE) submit BACKBONE=resnet34 
 
 train_resnet50_lstm:
