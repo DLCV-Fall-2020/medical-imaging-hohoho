@@ -47,7 +47,7 @@ def train(args, dataset):
     # optimizer 
     #optimizer1 = optim.AdamW(model.parameters(), args.lr, 
     #                        weight_decay=args.weight_decay)
-    optimizer1 = Ranger(model.parameters(), 1e-2)
+    optimizer1 = Ranger(model.parameters(), args.lr)
     #optimizer1 = optim.Adam(model.parameters(), args.lr, 
     #                        weight_decay=args.weight_decay)
     #optimizer2 = optim.SGD(model.parameters(), args.lr,
