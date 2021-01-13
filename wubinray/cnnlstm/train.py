@@ -120,7 +120,7 @@ def train(args, dataset):
         # valid
         model.eval()
         val_pred, val_lbls = [], []
-        for idx, (imgs, lbls) in enumerate(valid_loader):
+        for idx, (imgs, lbls, mask) in enumerate(valid_loader):
             b,t = imgs.size(0),imgs.size(2)
             imgs = imgs.to(args.device)
             lbls = lbls.to(args.device)
