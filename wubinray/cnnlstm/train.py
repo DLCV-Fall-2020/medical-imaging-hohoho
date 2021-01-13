@@ -2,6 +2,7 @@ from data_aug.dataset_wrapper import DatasetWrapper
 from models.model import HemoCnnLstm 
 #from loss.supconloss import SupConLoss
 from loss.focal_loss import AsymmetricLossOptimized
+from optimizer.ranger2020 import Ranger
 from utils.args import parse_args
 from utils.warmup import WarmupScheduler
 from utils.metrics import hemorrhage_metrics
@@ -38,14 +39,15 @@ def train(args, dataset):
     model.to(args.device)
 
     # loss
-    pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03]) / 3
+    pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03])
     loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=4, 
                                   pos_weight=pos_weight)
     #loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
     # optimizer 
-    optimizer1 = optim.AdamW(model.parameters(), args.lr, 
-                            weight_decay=args.weight_decay)
+    #optimizer1 = optim.AdamW(model.parameters(), args.lr, 
+    #                        weight_decay=args.weight_decay)
+    optimizer1 = Ranger(model.parameters(), 1e-2)
     #optimizer1 = optim.Adam(model.parameters(), args.lr, 
     #                        weight_decay=args.weight_decay)
     #optimizer2 = optim.SGD(model.parameters(), args.lr,
@@ -55,7 +57,7 @@ def train(args, dataset):
 
     # lr scheduler
     step_after = optim.lr_scheduler.CosineAnnealingLR(
-                                optimizer, T_max=args.epochs, 
+                                optimizer, T_max=args.epochs//5, 
                                 eta_min=args.eta_min, last_epoch=-1)
     lr_scheduler = WarmupScheduler(optimizer, multiplier=1,
                                 total_epoch=args.warmup_epochs,
