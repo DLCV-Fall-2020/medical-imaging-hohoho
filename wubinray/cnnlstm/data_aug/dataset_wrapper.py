@@ -153,7 +153,7 @@ class BloodDataset(Dataset):
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomApply([
                         transforms.ColorJitter(0.1,0.1,0.1,0)
-                    ],p=0.4),
+                    ],p=0.5),
                 #GaussianBlur(kernel_size=int(0.1 * img_size)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5]*ch, std=[0.5]*ch)

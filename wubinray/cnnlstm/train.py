@@ -40,9 +40,9 @@ def train(args, dataset):
 
     # loss
     pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03])
-    loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=4, 
-                                  pos_weight=pos_weight)
-    #loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
+    #loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=4, 
+    #                                    pos_weight=pos_weight)
+    loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
     # optimizer 
     optimizer = Ranger(model.parameters(), args.lr)
@@ -80,15 +80,15 @@ def train(args, dataset):
         # train
         model.train()
         for idx, (imgs, lbls, mask) in enumerate(train_loader):
-            b,t = imgs.size(0),imgs.size(2)
+            b,t,cls = imgs.size(0),imgs.size(2),lbls.size(2)
             imgs = imgs.to(args.device)
             lbls = lbls.to(args.device)
             mask = mask.to(args.device)
             
             preds = model(imgs)
             
-            preds = torch.masked_select(preds, mask)
-            lbls = torch.masked_select(lbls, mask)
+            preds = torch.masked_select(preds, mask).view(-1,cls)
+            lbls = torch.masked_select(lbls, mask).view(-1,cls)
             loss = loss_f(preds, lbls.float())
 
             optimizer.zero_grad()
@@ -121,7 +121,7 @@ def train(args, dataset):
         model.eval()
         val_pred, val_lbls = [], []
         for idx, (imgs, lbls, mask) in enumerate(valid_loader):
-            b,t = imgs.size(0),imgs.size(2)
+            b,t,cls = imgs.size(0),imgs.size(2),lbls.size(2)
             imgs = imgs.to(args.device)
             lbls = lbls.to(args.device)
             mask = mask.to(args.device)
@@ -129,8 +129,8 @@ def train(args, dataset):
             with torch.no_grad():
                 preds = model(imgs)
             
-            preds = torch.masked_select(preds, mask)
-            lbls = torch.masked_select(lbls, mask)
+            preds = torch.masked_select(preds, mask).view(-1,cls)
+            lbls = torch.masked_select(lbls, mask).view(-1,cls)
             loss = loss_f(preds, lbls.float())
 
             preds = torch.sigmoid(preds)

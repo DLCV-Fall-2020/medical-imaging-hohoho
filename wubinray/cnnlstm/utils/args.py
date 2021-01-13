@@ -5,9 +5,9 @@ def parse_args(string=None):
     # train args
     parser.add_argument('--bsize', type=int, default=8,
                         help="batch size")
-    parser.add_argument('--warmup_epochs', type=int, default=15,
+    parser.add_argument('--warmup_epochs', type=int, default=25,
                         help="lr warmup epochs")
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=150,
                         help="epochs")
     parser.add_argument('--num_workers', type=int, default=5,
                         help="dataloader workers")
@@ -44,9 +44,9 @@ def parse_args(string=None):
     parser.add_argument('--temperature', type=float, default=0.07, #0.07 0.5
                         help="NT-Xent loss temperature")
     # optimizer
-    parser.add_argument('--lr', type=float, default=5e-4,#5e-2,#2e-3,
+    parser.add_argument('--lr', type=float, default=5e-4,#Asym:5e-4 BCE:5e-4
                         help="learning rate")
-    parser.add_argument('--eta_min', type=float, default=1e-5,#2e-5,#5e-4,
+    parser.add_argument('--eta_min', type=float, default=1e-5,#Asym:1e-5 BCE:1e-5
                         help="cosin annealing to lr=eta_min")
     parser.add_argument('--momentum', type=float, default=0.9,
                         help="momentum")
