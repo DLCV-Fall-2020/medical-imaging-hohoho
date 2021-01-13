@@ -69,7 +69,7 @@ class HemoCnnLstm(nn.Module):
                                         stride=2, padding=3, bias=False)
             self.cnn_net = resnet 
             in_features = resnet.fc.in_features 
-        elif "densnet121" is backbone:
+        elif "densnet121" == backbone:
             densnet = HemoDenseNet121(1, n_classes)
             densnet.load_state_dict(
                             torch.load(pretrained,map_location="cpu"))
