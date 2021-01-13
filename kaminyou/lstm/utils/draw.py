@@ -12,6 +12,7 @@ def draw_compare_train_val(train, val, xlabel="Epoch", ylabel="Accuracy", title=
     plt.grid()
     if save:
         plt.savefig(save)
+        plt.clf()
     else:
         plt.show()
 
@@ -36,5 +37,6 @@ def draw_metric(train_pred, train_true, val_pred, val_true, metric="f2", save=No
     plt.legend()
     if save:
         plt.savefig(save)
+        plt.clf()
     else:
         plt.show()

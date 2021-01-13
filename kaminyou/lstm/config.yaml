@@ -1,17 +1,19 @@
-preprocessing:
+PREPROCESSING:
   TRAIN_DATA_PATH: ./../../Blood_data/train/
   TEST_DATA_PATH: ./../../Blood_data/test/
-  BACKBONE_MODEL_PATH: ./../../wubinray/base/checkpoints/resnet18/best_0.75.pth
+  BACKBONE_MODEL_PATH: ./backbone_model/resnet18_0.76065.pth #./../../wubinray/base/checkpoints/resnet18/best_0.75.pth
   BACKBONE_MDOEL_NAME: resnet18
   device: cuda
-  TRAIN_EMBEDDING_SAVE: ./train_embedding.pkl
-  TEST_EMBEDDING_SAVE: ./test_embedding.pkl
+  TRAIN_EMBEDDING_SAVE: ./train_embedding_resnet18_0.76065.pkl
+  TEST_EMBEDDING_SAVE: ./test_embedding_resnet18_0.76065.pkl
 
 LSTM_TRAINING: 
   FIX_SPLIT: true
+  TRAIN_SET_PATH: ./train_set_resnet18_0.76065.pkl
+  VAL_SET_PATH: ./val_set_resnet18_0.76065.pkl
   TRAIN_DATA_PATH: ./../../Blood_data/train/
-  TRAIN_EMBEDDING: ./train_embedding.pkl
-  TEST_EMBEDDING: ./test_embedding.pkl
+  TRAIN_EMBEDDING: ./train_embedding_resnet18_0.76065.pkl
+  TEST_EMBEDDING: ./test_embedding_resnet18_0.76065.pkl
   TRAIN_LABEL_CSV: ./../../Blood_data/train.csv
 
   BATCH_SIZE: 64

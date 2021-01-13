@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import os
 import yaml
-import pickle
+import pickle5 as pickle
 from datetime import datetime
 from utils.util import get_pt_id_list, get_weight
 from utils.dataset import LSTMHemorrhageDataset, collatefn
@@ -32,9 +32,9 @@ if __name__ == "__main__":
 
     # split set
     if training_config["FIX_SPLIT"]:
-        with open("./train_set.pkl", "rb" ) as f: 
+        with open(training_config["TRAIN_SET_PATH"], "rb" ) as f: 
             train_pt = np.array(pickle.load(f))
-        with open("./val_set.pkl", "rb" ) as f: 
+        with open(training_config["VAL_SET_PATH"], "rb" ) as f: 
             val_pt = np.array(pickle.load(f))
     else:
         random_split_pt = RandomSplitPt(train_data_root = training_config["TRAIN_DATA_PATH"])
