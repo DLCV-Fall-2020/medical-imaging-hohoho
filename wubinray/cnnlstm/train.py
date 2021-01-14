@@ -35,7 +35,7 @@ def train(args, dataset):
     train_loader, valid_loader = dataset.get_dataloaders()
     
     # model
-    model = HemoCnnLstm(args.backbone, args.t, n_classes=args.n_classes)
+    model = HemoCnnLstm(args.backbone, n_classes=args.n_classes)
     model.to(args.device)
 
     # loss

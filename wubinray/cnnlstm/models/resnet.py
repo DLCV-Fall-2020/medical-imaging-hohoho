@@ -17,6 +17,10 @@ class HemoResNet18(nn.Module):
         self.base_model = resnet
     def forward(self, x):
         return self.base_model(x)
+    def feature(self, x):
+        for layer in list(self.base_model.children())[:-1]:
+            x = layer(x)
+        return x
 
 class HemoResNet50(nn.Module):
     def __init__(self, in_channels = 3, n_classes=5):

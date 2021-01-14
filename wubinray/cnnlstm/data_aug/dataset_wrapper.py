@@ -23,10 +23,9 @@ img_size=512
 # ich,ivh,sah,sdh,edh
 
 class BloodDataset_Test(Dataset):
-    def __init__(self, path, trans, t=32):
+    def __init__(self, path, trans):
         self.path = path
         self.trans = trans 
-        self.t = t
 
         self.data = [] # [ (1,t,1), ... ]
 
@@ -35,16 +34,13 @@ class BloodDataset_Test(Dataset):
         for _dir in dirs:
             _fnames = sorted(os.listdir(f"{path}/{_dir}"))
 
-            for i in range(len(_fnames)):
-                src = max(0, i-t//2)
-                end = src + t
-                self.data.append((_dir, _fnames[src:end], _fnames[i]))
+            self.data.append((_dir, _fnames))
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        _dir, _fnames, _fname = self.data[idx]
+        _dir, _fnames = self.data[idx]
         stack = []
         for f in _fnames:
             img_path = self.path + f"{_dir}/{f}"
@@ -54,20 +50,43 @@ class BloodDataset_Test(Dataset):
         stack = np.stack(stack, axis=1)
         stack = torch.tensor(stack) # (1,t,h,w)
         
-        index_select = _fnames.index(_fname)
-        
-        return stack, index_select, _fname 
+        _dir = [_dir]*len(_fnames)
 
-    def collate_fn(self, sample):
-        pass 
+        return stack, _dir, _fnames   
+
+    def collate_fn(self, samples):
+        t_max = max([stack.shape[1] for stack,_,_ in samples])
+        
+        batch_imgs, batch_mask, batch_dir, batch_fnames = [],[],[],[]
+        for stack, _dir, _fnames in samples:
+            # stack:(1,t,h,w), label:(t,class)
+            t = stack.size(1)
+            
+            # img
+            img = torch.zeros(1,t_max,img_size,img_size)
+            img[:,:t] = stack
+            
+            # mask
+            mask = [[True]]*t + [[False]]*(t_max-t)
+            mask = torch.tensor(mask)
+
+            batch_imgs.append(img)
+            batch_mask.append(mask)
+            batch_dir.append(_dir)
+            batch_fnames.append(_fnames)
+        
+        batch_imgs = torch.stack(batch_imgs,dim=0)
+        batch_mask = torch.stack(batch_mask,dim=0)
+        # imgs(b,1,t_max,h,w) mask(b,t_max) dir(b,t) fnames(b,t)
+        return batch_imgs, batch_mask, batch_dir, batch_fnames 
     
     @staticmethod
     def get_transform(ch=1):
         trans = transforms.Compose([
                 transforms.Resize(img_size),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5]*self.ch,
-                                     std=[0.5]*self.ch)
+                transforms.Normalize(mean=[0.5]*ch,
+                                     std=[0.5]*ch)
             ]) 
         return trans 
  
@@ -88,14 +107,6 @@ class BloodDataset(Dataset):
             _fnames, lbls = sub_df['ID'].tolist(), sub_df.to_numpy()[:,2:]
             
             self.data.append((_dir, _fnames, lbls)) # (1,t,(t,class))
-            '''
-            max_len = len(_fnames)
-            for i in range(0, max_len):
-                src = max(0, i-t//2)
-                end = src + t
-                self.data.append((_dir, 
-                            _fnames[i], _fnames[src:end], lbls[src:end]))
-            '''
 
     def __len__(self):
         return len(self.data)
@@ -149,7 +160,7 @@ class BloodDataset(Dataset):
     def get_transform(ch=1):
         train_trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomRotation(50, fill=(0,)), 
+                transforms.RandomRotation(40, fill=(0,)), 
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomApply([
                         transforms.ColorJitter(0.1,0.1,0.1,0)

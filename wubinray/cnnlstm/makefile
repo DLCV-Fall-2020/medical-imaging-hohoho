@@ -1,7 +1,11 @@
+
+######################## Training ############################
+
 BACKBONE=resnetxx_3d
 THRESHOLD=0.5
 DEVICE=cuda 
 BSIZE=4
+MODEL_PATH=./checkpoints/resnet18/best.pth
 
 train_resnet18_lstm: 
 	$(eval BACKBONE=resnet18)
@@ -17,8 +21,12 @@ train_resnet50_lstm:
 	$(eval BACKBONE=resnet50)
 	python3 train.py --backbone $(BACKBONE) --bsize 16 --device cuda --fp16_precision 
 
+######################## Inference ############################
+
+CUDA_ENV=export CUDA_VISIBLE_DEVICES=0
+
 submit:
-	python3 inference.py --backbone $(BACKBONE) --model_path ./checkpoints/resnet18/best.pth --pred_csv_path ./pred.csv --threshold $(THRESHOLD) --device cuda:1
+	$(CUDA_ENV) && python3 inference.py --backbone $(BACKBONE) --model_path $(MODEL_PATH) --pred_csv_path ./pred.csv --threshold $(THRESHOLD) --device $(DEVICE)
 	python3 to_kaggle.py --pred_csv_path ./pred.csv --out_csv_path ./submit.csv 
 	rm ./pred.csv 
 
