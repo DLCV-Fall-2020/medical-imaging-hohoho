@@ -1,4 +1,5 @@
-from data_aug.dataset_wrapper import BloodDataset_Test, DataLoader
+from data_aug.dataset_wrapper import BloodDataset_Test, BloodDataset_Test_TTA
+from data_aug.dataset_wrapper import DataLoader
 from models.model import HemoCnnLstm
 
 import csv
@@ -13,12 +14,16 @@ import warnings
 warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--ch', type=int, default=1,
-                    help='input channels how many picture')
+parser.add_argument('--tta', action="store_true",
+                    help='test time augmentation')
+parser.add_argument('--num_tta', type=int, default=3,
+                    help='number of test time augmentation')
 parser.add_argument('--n_classes', type=int, default=5,
                     help='n classes')
 parser.add_argument('--backbone', type=str, default='resnet18',
                     help='backbone used')
+parser.add_argument('--bsize', type=int, default=4,
+                    help='testing batch size')
 parser.add_argument('--model_path', type=str, default='./checkpoints/resnet18/best.pth',
                     help='trained model pth path')
 parser.add_argument('--pred_csv_path', type=str, default='./pred.csv',
@@ -32,10 +37,12 @@ args = parser.parse_args()
 @torch.no_grad()
 def inference():
     
-    test_trans = BloodDataset_Test.get_transform()
-    test_dataset = BloodDataset_Test("/media/disk1/aa/Blood_data/test/",
-                                    test_trans)
-    test_loader = DataLoader(test_dataset, batch_size=4, 
+    testset_path="/media/disk1/aa/Blood_data/test/"
+    if args.tta:
+        test_dataset = BloodDataset_Test_TTA(testset_path)
+    else: 
+        test_dataset = BloodDataset_Test(testset_path)
+    test_loader = DataLoader(test_dataset, batch_size=args.bsize, 
                              collate_fn = test_dataset.collate_fn, 
                              num_workers = 5, shuffle=False)
     
@@ -48,10 +55,14 @@ def inference():
     prediction = []
         
     for idx, (img, mask, _dir, _fnames) in enumerate(test_loader):
-        bsize = img.size(0)
-
+        bsize, t = img.size(0), img.size(2)
+        
         logits = model(img.to(args.device))
         logits = torch.sigmoid(logits)
+
+        if args.tta:
+            bsize = bsize//args.num_tta 
+            logits = logits.view(bsize,args.num_tta,t,-1).mean(dim=1)
         
         for b in range(bsize):
             pt_name_list += _dir[b]

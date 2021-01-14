@@ -67,8 +67,6 @@ class HemoCnnLstm(nn.Module):
             cnn_net = HemoResNets[backbone](1, n_classes)
         elif "densnet121" == backbone:
             cnn_net = HemoDenseNet121(1, n_classes)
-        else:
-            raise NotImplementedError(f"{backbone} is not implemented")
         
         if pretrained is not None:
             print(f"\t[Info] Load petrained {pretrained}")
@@ -81,15 +79,13 @@ class HemoCnnLstm(nn.Module):
         LSTM_UNITS=64
  
         # backbone
-        #self.backbone = nn.Sequential(*list(self.cnn_net.children())[:-1])
         self.backbone = nn.DataParallel(self.backbone)
 
-        self.drop2d = SpatialDropout(p=0.2)
+        self.drop2d = SpatialDropout(p=0.15)
        
         # lstm
         self.lstm = HemoLSTMBasic(EMBED_SIZE, LSTM_UNITS, DO=0, 
                                                     n_classes=n_classes)
-        #self.lstm = nn.DataParallel(self.lstm)
 
     def forward(self, x):
         b,_,t,w,h = x.shape 

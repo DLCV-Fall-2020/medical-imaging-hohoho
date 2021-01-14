@@ -45,16 +45,12 @@ def train(args, dataset):
     loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
     # optimizer 
-    optimizer = Ranger(model.parameters(), args.lr)
-    #optimizer = optim.AdamW(model.parameters(), args.lr, 
-    #                        weight_decay=args.weight_decay)
-    #optimizer = optim.Adam(model.parameters(), args.lr) 
-    #optimizer = optim.SGD(model.parameters(), args.lr,
-    #                        args.momentum)
+    #optimizer = Ranger(model.parameters(), args.lr)
+    optimizer = optim.Adam(model.parameters(), args.lr) 
 
     # lr scheduler
     step_after = optim.lr_scheduler.CosineAnnealingLR(
-                                optimizer, T_max=25, 
+                                optimizer, T_max=30, 
                                 eta_min=args.eta_min, last_epoch=-1)
     lr_scheduler = WarmupScheduler(optimizer, multiplier=1,
                                 total_epoch=args.warmup_epochs,
