@@ -54,7 +54,7 @@ def train(args, dataset):
 
     # lr scheduler
     step_after = optim.lr_scheduler.CosineAnnealingLR(
-                                optimizer, T_max=args.epochs//5, 
+                                optimizer, T_max=25, 
                                 eta_min=args.eta_min, last_epoch=-1)
     lr_scheduler = WarmupScheduler(optimizer, multiplier=1,
                                 total_epoch=args.warmup_epochs,
