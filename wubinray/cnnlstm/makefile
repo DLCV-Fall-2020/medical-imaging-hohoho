@@ -5,11 +5,17 @@ BACKBONE=resnetxx_3d
 THRESHOLD=0.5
 DEVICE=cuda 
 BSIZE=4
-MODEL_PATH=./checkpoints/resnet18/best.pth
+TRAIN_VALID_SPLIT=../base/checkpoints/train_valid_split.pkl 
+LOAD_PRETRAINED=../base/checkpoints/resnet18/best.pth
+
+train_resnet18_lstm_pretrained_cnn: 
+	$(eval BACKBONE=resnet18)
+	python3 train.py --backbone $(BACKBONE) --bsize $(BSIZE) --device $(DEVICE) --train_valid_split_pkl $(TRAIN_VALID_SPLIT) --load_pretrained $(LOAD_PRETRAINED) --fp16_precision --lr 1e-4 --eta_min 1e-5
+	$(MAKE) submit BACKBONE=resnet18 
 
 train_resnet18_lstm: 
 	$(eval BACKBONE=resnet18)
-	python3 train.py --backbone $(BACKBONE) --bsize $(BSIZE) --device $(DEVICE) --fp16_precision
+	python3 train.py --backbone $(BACKBONE) --bsize $(BSIZE) --device $(DEVICE) --fp16_precision 
 	$(MAKE) submit BACKBONE=resnet18 
 
 train_resnet34_lstm:

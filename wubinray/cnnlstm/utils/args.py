@@ -22,6 +22,10 @@ def parse_args(string=None):
                         help="time sequence of image input")
     parser.add_argument('--img_size', type=int, default=512,
                         help="input img size")
+    parser.add_argument('--pre_split', action="store_true",
+                        help="use pre split sets?")
+    parser.add_argument('--train_valid_split_pkl', type=str, default=None,
+                    help="../base/checkpoints/train_valid_split.pkl")
     parser.add_argument('--valid_size', type=float, default=0.15,
                         help="valid split %")
     parser.add_argument('--n_classes', type=int, default=5,
@@ -30,14 +34,13 @@ def parse_args(string=None):
     parser.add_argument('--backbone', type=str, default='densnet121',
                         choices=["densnet121","resnet18", "resnet34"],
                         help='backbone used')
-    parser.add_argument('--pretrained', action="store_true")
     parser.add_argument('--hidd_dim', type=int, default=128,
                         help='resnet3d output dimension')
     parser.add_argument('--proj_dim', type=int, default=32,
                         help="project head projected dimension")
-    parser.add_argument('--load_pretrained', type=str, 
-                        default='./chechpoints/best.pth',
-                        help="load pretraind pth path")
+    parser.add_argument('--pretrained', action="store_true")
+    parser.add_argument('--load_pretrained', type=str, default=None,
+                        help="../base/checkpoints/best.pth")
     # loss
     parser.add_argument('--use_cos_similarity', action="store_true",
                         help="calculate loss use cosine similairty")

@@ -107,11 +107,11 @@ class BloodDataset(Dataset):
     def get_transform(ch=1):
         train_trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomRotation(10),
-                #transforms.RandomHorizontalFlip(),
-                #transforms.RandomApply([
-                #        transforms.ColorJitter()
-                #    ],p=0.1),
+                transforms.RandomRotation(30),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomApply([
+                        transforms.ColorJitter(0.1,0.1,0.1,0),
+                    ],p=0.4),
                 #GaussianBlur(kernel_size=int(0.1 * img_size)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5]*ch, std=[0.5]*ch)

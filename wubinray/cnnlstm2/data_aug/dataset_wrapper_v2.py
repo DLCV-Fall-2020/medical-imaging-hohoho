@@ -1,12 +1,11 @@
-from data_aug.gaussian_blur import GaussianBlur
+#from data_aug.gaussian_blur import GaussianBlur
 
 #####
 from PIL import Image, ImageOps
-
+#import pdb
 import os
 import glob 
 import torch
-import pickle
 import numpy as np
 import pandas as pd
 import torchvision.transforms as transforms 
@@ -14,7 +13,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import datasets
-
+import math
 np.random.seed(87)
 torch.manual_seed(87)
 
@@ -24,9 +23,10 @@ img_size=512
 # ich,ivh,sah,sdh,edh
 
 class BloodDataset_Test(Dataset):
-    def __init__(self, path, trans):
+    def __init__(self, path, trans, t=32):
         self.path = path
         self.trans = trans 
+        self.t = t
 
         self.data = [] # [ (1,t,1), ... ]
 
@@ -35,13 +35,16 @@ class BloodDataset_Test(Dataset):
         for _dir in dirs:
             _fnames = sorted(os.listdir(f"{path}/{_dir}"))
 
-            self.data.append((_dir, _fnames))
+            for i in range(len(_fnames)):
+                src = max(0, i-t//2)
+                end = src + t
+                self.data.append((_dir, _fnames[src:end], _fnames[i]))
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        _dir, _fnames = self.data[idx]
+        _dir, _fnames, _fname = self.data[idx]
         stack = []
         for f in _fnames:
             img_path = self.path + f"{_dir}/{f}"
@@ -51,55 +54,35 @@ class BloodDataset_Test(Dataset):
         stack = np.stack(stack, axis=1)
         stack = torch.tensor(stack) # (1,t,h,w)
         
-        _dir = [_dir]*len(_fnames)
-
-        return stack, _dir, _fnames   
-
-    def collate_fn(self, samples):
-        t_max = max([stack.shape[1] for stack,_,_ in samples])
+        index_select = _fnames.index(_fname)
         
-        batch_imgs, batch_mask, batch_dir, batch_fnames = [],[],[],[]
-        for stack, _dir, _fnames in samples:
-            # stack:(1,t,h,w), label:(t,class)
-            t = stack.size(1)
-            
-            # img
-            img = torch.zeros(1,t_max,img_size,img_size)
-            img[:,:t] = stack
-            
-            # mask
-            mask = [[True]]*t + [[False]]*(t_max-t)
-            mask = torch.tensor(mask)
+        return stack, index_select, _fname 
 
-            batch_imgs.append(img)
-            batch_mask.append(mask)
-            batch_dir.append(_dir)
-            batch_fnames.append(_fnames)
-        
-        batch_imgs = torch.stack(batch_imgs,dim=0)
-        batch_mask = torch.stack(batch_mask,dim=0)
-        # imgs(b,1,t_max,h,w) mask(b,t_max) dir(b,t) fnames(b,t)
-        return batch_imgs, batch_mask, batch_dir, batch_fnames 
+    def collate_fn(self, sample):
+        pass 
     
     @staticmethod
     def get_transform(ch=1):
         trans = transforms.Compose([
                 transforms.Resize(img_size),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5]*ch,
-                                     std=[0.5]*ch)
+                transforms.Normalize(mean=[0.5]*self.ch,
+                                     std=[0.5]*self.ch)
             ]) 
         return trans 
  
 
 class BloodDataset(Dataset):
-    def __init__(self, path, dirs, trans):
+    def __init__(self, path, dirs, trans, t=3, if_train=True, if_smooth=False):
+        assert t%2==1 
         train_df = pd.read_csv(path.rstrip('/')+".csv")
         #train_df = pd.read_csv(path.rstrip('/')+"_clean.csv")
-
         self.path = path
         self.trans = trans 
-        
+        self.t = t
+        self.if_train = if_train
+        self.if_smooth = if_smooth
+        self.labels=dict()
         self.data = [] # [ (1,t,(t,class)), ... ] 
         
         for _dir in dirs:
@@ -107,27 +90,52 @@ class BloodDataset(Dataset):
             
             _fnames, lbls = sub_df['ID'].tolist(), sub_df.to_numpy()[:,2:]
             
-            self.data.append((_dir, _fnames, lbls)) # (1,t,(t,class))
-
+            max_len = len(_fnames)
+            for i in range(0, max_len):
+                src = max(0, i-t//2)
+                end = src + t
+                self.data.append((_dir, 
+                            _fnames[i], _fnames[src:end], lbls[src:end]))
+                self.labels.update({_fnames[i] : lbls[src:end]})
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, idx):
-        _dir, _fnames, label = self.data[idx]
+        _dir, _fname, _fnames, label = self.data[idx]
+        #print(_dir)
+        #print(_fnames)
         stack = []
         for f in _fnames:
             img_path = self.path + f"{_dir}/{f}"
             img = Image.open(img_path).resize((img_size,img_size))
             img = self.trans(img)
             stack.append(img)
+    
         stack = np.stack(stack, axis=1)
-        
+        #print(stack)
+        index_select = _fnames.index(_fname)    
         label = label.astype(np.bool)
-        
         stack = torch.tensor(stack) # (1,t,h,w)
-        label = torch.tensor(label) # (t,class)
-        return stack, label
+	
+        # label smoothing
+        if self.if_train and self.if_smooth:
+            all_label = self.labels[_fnames[index_select]]
+            l = self.weight_smooth(all_label, index_select)
+            #print(l)
+            return stack, l
+        elif self.if_smooth:
+            return stack, label[index_select]
+        else :
+            label = torch.tensor(label) # (t,class)
+            return stack, label
 
+    def weight_smooth(self, all_label, index_select):
+        w = [math.pow(2,(-np.abs(x-index_select))) for x in range(int(self.t))]
+        w = np.array(w).reshape(-1, all_label.shape[0])
+        #print(f'w={w}')
+        #print(f'all_label = {all_label}')
+        return (np.concatenate(np.dot(w, all_label))/2).astype(int)
+                
     def collate_fn(self, samples):
         t_max = max([stack.shape[1] for stack,_ in samples])
         
@@ -145,7 +153,7 @@ class BloodDataset(Dataset):
             lbl[:t] = label 
             
             # mask
-            mask = [[True]]*t + [[False]]*(t_max-t)
+            mask = [1]*t + [0]*(t_max-t)
             mask = torch.tensor(mask)
 
             batch_imgs.append(img)
@@ -155,17 +163,17 @@ class BloodDataset(Dataset):
         batch_imgs = torch.stack(batch_imgs,dim=0) # (b,1,t_max,h,w)
         batch_lbls = torch.stack(batch_lbls,dim=0) # (b,t_max,class)
         batch_mask = torch.stack(batch_mask,dim=0) # (b,t_max)
-        return batch_imgs, batch_lbls, batch_mask 
+        return batch_imgs, batch_lbls#, batch_mask 
     
     @staticmethod 
     def get_transform(ch=1):
         train_trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomRotation(40, fill=(0,)), 
+                transforms.RandomRotation(20, fill=(0,)), 
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomApply([
                         transforms.ColorJitter(0.1,0.1,0.1,0)
-                    ],p=0.5),
+                    ],p=0.7),
                 #GaussianBlur(kernel_size=int(0.1 * img_size)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5]*ch, std=[0.5]*ch)
@@ -179,34 +187,28 @@ class BloodDataset(Dataset):
 
 class DatasetWrapper(object):
 
-    def __init__(self, path, bsize, valid_size=0.15, 
-                    train_valid_split_pkl=None):
+    def __init__(self, path, bsize, valid_size=0.15, ch=1, t=10):
         self.path = path 
         self.bsize = bsize
         self.valid_size = valid_size
-        self.train_valid_split_pkl = train_valid_split_pkl 
+        self.ch = ch 
+        self.t = t
     
     def get_dataloaders(self):
         # split train dirs
-        if self.train_valid_split_pkl is None:
-            dirs = os.listdir(self.path)
-            np.random.shuffle(dirs)
-            split = int(len(dirs)*(1-self.valid_size))
-            train_dirs, valid_dirs = dirs[:split], dirs[split:]
-        elif os.path.exists(self.train_valid_split_pkl):
-            print("\t[Info] load pre split train valid set")
-            with open(self.train_valid_split_pkl, 'rb') as f:
-                sets = pickle.load(f)
-                train_dirs, valid_dirs = sets['train'], sets['valid']
-        else:
-            raise FileNotFoundError(f"{self.train_valid_split_pkl} not exis")
+        dirs = os.listdir(self.path)
+        np.random.shuffle(dirs)
+        split = int(len(dirs)*(1-self.valid_size))
+        train_dirs, valid_dirs = dirs[:split], dirs[split:]
         
         # data aug
-        train_trans, valid_trans = BloodDataset.get_transform()
+        train_trans, valid_trans = BloodDataset.get_transform(self.ch)
     
         # dataset
-        train_dataset = BloodDataset(self.path, train_dirs, train_trans)
-        valid_dataset = BloodDataset(self.path, valid_dirs, valid_trans)
+        train_dataset = BloodDataset(self.path, train_dirs, train_trans,
+                                    self.t, if_train=True, if_smooth=True)
+        valid_dataset = BloodDataset(self.path, valid_dirs, valid_trans,
+                                    self.t, if_train=False, if_smooth=True)
 
         # dataloader
         train_loader = DataLoader(train_dataset,
@@ -219,4 +221,13 @@ class DatasetWrapper(object):
                                   collate_fn=valid_dataset.collate_fn,
                                   num_workers=6)
         return train_loader, valid_loader 
+
+class SimCLRTrans(object):
+    def __init__(self, trans):
+        self.trans = trans
+
+    def __call__(self, sample):
+        xi = self.trans(sample)
+        xj = self.trans(sample)
+        return xi,xj
 

@@ -6,6 +6,7 @@ from PIL import Image, ImageOps
 import os
 import glob 
 import torch
+import pickle
 import numpy as np
 import pandas as pd
 import torchvision.transforms as transforms 
@@ -14,8 +15,8 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import datasets
 
-np.random.seed(87)
-torch.manual_seed(87)
+np.random.seed(987)
+torch.manual_seed(987)
 
 img_size=256
 img_size=512
@@ -132,7 +133,7 @@ class BloodDataset(Dataset):
     def get_transform(ch=1):
         train_trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomRotation(20),
+                transforms.RandomRotation(60, fill=(0,)),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomApply([
                         transforms.ColorJitter(0.1,0.1,0.1,0)
@@ -162,6 +163,13 @@ class DatasetWrapper(object):
         np.random.shuffle(dirs)
         split = int(len(dirs) * (1-self.valid_size))
         train_dirs, valid_dirs = dirs[:split], dirs[split:]
+
+        # dump train valid split
+        os.system("mkdir -p ./checkpoints")
+        with open("./checkpoints/train_valid_split.pkl", 'wb') as f:
+            pickle.dump({'train':train_dirs, 'valid':valid_dirs},
+                        f, protocol=pickle.HIGHEST_PROTOCOL)
+
         
         # data aug
         train_trans, valid_trans = BloodDataset.get_transform(self.ch)

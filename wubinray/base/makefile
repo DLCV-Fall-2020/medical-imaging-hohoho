@@ -1,7 +1,7 @@
 BACKBONE=resnetxx
 THRESHOLD=0.5
 DEVICE=cuda:1
-CH=3
+CH=1
 
 train_resnet18: 
 	$(eval BACKBONE=resnet18)

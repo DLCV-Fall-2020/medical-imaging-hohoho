@@ -2,7 +2,6 @@ from data_aug.dataset_wrapper import DatasetWrapper
 from models.model import HemoCnnLstm 
 #from loss.supconloss import SupConLoss
 from loss.focal_loss import AsymmetricLossOptimized
-from optimizer.ranger2020 import Ranger
 from utils.args import parse_args
 from utils.warmup import WarmupScheduler
 from utils.metrics import hemorrhage_metrics
@@ -35,26 +34,31 @@ def train(args, dataset):
     train_loader, valid_loader = dataset.get_dataloaders()
     
     # model
-    model = HemoCnnLstm(args.backbone, args.n_classes, args.load_pretrained)
+    if args.use_pretrained:
+        model = HemoCnnLstm(args.backbone, args.t, n_classes=args.n_classes,
+                            pretrained=args.load_pretrained)
+    else:
+        model = HemoCnnLstm(args.backbone, args.t, n_classes=args.n_classes)
     model.to(args.device)
 
     # loss
     pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03])
     loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=4, 
-                                        pos_weight=pos_weight)
-    #loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
+                                  pos_weight=pos_weight)
+    loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
-    # optimizer 
-    optimizer = Ranger(model.parameters(), args.lr)
-    #optimizer = optim.AdamW(model.parameters(), args.lr, 
+    # optimizer
+    optimizer1 = optim.AdamW(model.parameters(), args.lr)
+    #optimizer1 = optim.Adam(model.parameters(), args.lr, 
     #                        weight_decay=args.weight_decay)
-    #optimizer = optim.Adam(model.parameters(), args.lr) 
-    #optimizer = optim.SGD(model.parameters(), args.lr,
+    #optimizer2 = optim.SGD(model.parameters(), args.lr,
     #                        args.momentum)
+    optimizer2 = optimizer1 
+    optimizer = optimizer1
 
     # lr scheduler
     step_after = optim.lr_scheduler.CosineAnnealingLR(
-                                optimizer, T_max=args.epochs//5, 
+                                optimizer, T_max=8, 
                                 eta_min=args.eta_min, last_epoch=-1)
     lr_scheduler = WarmupScheduler(optimizer, multiplier=1,
                                 total_epoch=args.warmup_epochs,
@@ -76,19 +80,20 @@ def train(args, dataset):
 
         train_loss, valid_loss, train_acc, train_recall, train_f2 =\
                     [Averager() for i in range(5)]
+
+        # change optimizer stage policy
+        if epoch > args.epochs*0.7:
+            lr_scheduler.after_scheduler.optimizer = optimizer2
         
         # train
         model.train()
-        for idx, (imgs, lbls, mask) in enumerate(train_loader):
-            b,t,cls = imgs.size(0),imgs.size(2),lbls.size(2)
+        for idx, (imgs, lbls) in enumerate(train_loader):
+            b,t = imgs.size(0),imgs.size(2)
             imgs = imgs.to(args.device)
             lbls = lbls.to(args.device)
-            mask = mask.to(args.device)
-            
+           
             preds = model(imgs)
             
-            preds = torch.masked_select(preds, mask).view(-1,cls)
-            lbls = torch.masked_select(lbls, mask).view(-1,cls)
             loss = loss_f(preds, lbls.float())
 
             optimizer.zero_grad()
@@ -120,19 +125,16 @@ def train(args, dataset):
         # valid
         model.eval()
         val_pred, val_lbls = [], []
-        for idx, (imgs, lbls, mask) in enumerate(valid_loader):
-            b,t,cls = imgs.size(0),imgs.size(2),lbls.size(2)
+        for idx, (imgs, lbls) in enumerate(valid_loader):
+            b,t = imgs.size(0),imgs.size(2)
             imgs = imgs.to(args.device)
             lbls = lbls.to(args.device)
-            mask = mask.to(args.device)
-           
+
             with torch.no_grad():
                 preds = model(imgs)
-            
-            preds = torch.masked_select(preds, mask).view(-1,cls)
-            lbls = torch.masked_select(lbls, mask).view(-1,cls)
-            loss = loss_f(preds, lbls.float())
 
+            loss = loss_f(preds, lbls.float())
+            
             preds = torch.sigmoid(preds)
             val_pred.append(preds.cpu().detach().numpy())
             val_lbls.append(lbls.cpu().detach().numpy())
@@ -164,6 +166,7 @@ if __name__=='__main__':
     dataset = DatasetWrapper("/media/disk1/aa/Blood_data/train/",
                             args.bsize,
                             args.valid_size,
-                            args.train_valid_split_pkl)
+                            args.ch,
+                            args.t)
     train(args, dataset)
     

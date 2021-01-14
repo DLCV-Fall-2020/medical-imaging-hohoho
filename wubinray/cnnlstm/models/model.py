@@ -12,9 +12,6 @@ Ref: https://github.com/darraghdog/rsna/blob/master/scripts/trainlstm.py
 
 https://reurl.cc/Ag1egj
 '''
-resnets = {"resnet18": models.resnet18,
-           "resnet34": models.resnet34,
-           "resnet50": models.resnet50}
 
 class SpatialDropout(nn.Module):
     def __init__(self, p=0.2):
@@ -58,33 +55,33 @@ class HemoLSTMBasic(nn.Module):
         output = self.linear(hidden)
         
         return output
-    
+ 
+HemoResNets = {"resnet18": HemoResNet18,
+               "resnet50": HemoResNet50 }
+   
 class HemoCnnLstm(nn.Module):
-    def __init__(self, backbone="resnet18", n_classes=5, 
-                    pretrained=None):
+    def __init__(self, backbone="resnet18", n_classes=5, pretrained=None):
         super().__init__()
        
         if "resnet" in backbone:  
-            resnet = resnets[backbone](pretrained=True)
-            resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7,
-                                        stride=2, padding=3, bias=False)
-            self.cnn_net = resnet 
-            in_features = resnet.fc.in_features 
+            cnn_net = HemoResNets[backbone](1, n_classes)
         elif "densnet121" == backbone:
-            densnet = HemoDenseNet121(1, n_classes)
-            densnet.load_state_dict(
-                            torch.load(pretrained,map_location="cpu"))
-            self.cnn_net = densnet.base_model 
-            
-            in_features = densnet.base_model.classifier.in_features 
+            cnn_net = HemoDenseNet121(1, n_classes)
         else:
             raise NotImplementedError(f"{backbone} is not implemented")
+        
+        if pretrained is not None:
+            print(f"\t[Info] Load petrained {pretrained}")
+            cnn_net.load_state_dict(
+                    torch.load(pretrained, map_location="cpu"))
+        self.backbone = cnn_net 
+
         # hyper parameters
-        EMBED_SIZE=in_features 
+        EMBED_SIZE=cnn_net.in_features  
         LSTM_UNITS=64
  
         # backbone
-        self.backbone = nn.Sequential(*list(self.cnn_net.children())[:-1])
+        #self.backbone = nn.Sequential(*list(self.cnn_net.children())[:-1])
         self.backbone = nn.DataParallel(self.backbone)
 
         self.drop2d = SpatialDropout(p=0.2)
@@ -99,7 +96,7 @@ class HemoCnnLstm(nn.Module):
         
         # cnn
         x = x.view(b*t,1,w,h)
-        h = self.backbone(x)
+        h = self.backbone(x, feature_only=True)
         h = h.view(b,t,-1)
         
         if self.training:
