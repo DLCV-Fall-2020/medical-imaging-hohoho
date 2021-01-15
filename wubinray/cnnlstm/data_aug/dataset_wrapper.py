@@ -195,7 +195,7 @@ class BloodDataset(Dataset):
     
     def __getitem__(self, idx):
         _dir, _fnames, label = self.data[idx]
-        print(_fnames)
+        
         stack = []
         for f in _fnames:
             img_path = self.path + f"{_dir}/{f}"
