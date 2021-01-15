@@ -23,99 +23,18 @@ img_size=512
 
 # ich,ivh,sah,sdh,edh
 
-class BloodDataset_Test_TTA(Dataset): # TestTimeAugment(3)
-    def __init__(self, path, num_tta=3):
-        self.path = path
-        self.num_tta = num_tta 
-        self.trans = self.get_transform()
-
-        self.data = [] # [ (1,t,1), ... ]
-
-        dirs = sorted(os.listdir(path))
-        for _dir in dirs:
-            _fnames = os.listdir(f"{path}/{_dir}")
-            _fnames = [(int(f[f.find('_')+1:f.find('.jpg')]), f) 
-                        for f in _fnames]
-            _fnames = sorted(_fnames, key=lambda x:x[0])
-            _fnames = [f[1] for f in _fnames]
-            
-            self.data.append((_dir, _fnames))
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        _dir, _fnames = self.data[idx]
-        stack_tta = []
-        for i in range(self.num_tta):
-            stack = []
-            for f in _fnames:
-                img_path = self.path + f"{_dir}/{f}"
-                img = Image.open(img_path).resize((img_size,img_size))
-                img = self.trans(img)
-                stack.append(img)
-            stack = np.stack(stack, axis=1)
-            stack_tta.append(stack)
-        stack_tta = np.concatenate(stack_tta)
-        stack = torch.tensor(stack) # (num_tta,t,h,w)
-        
-        _dir = [_dir]*len(_fnames)
-
-        return stack, _dir, _fnames   
-
-    def collate_fn(self, samples):
-        t_max = max([stack.shape[1] for stack,_,_ in samples])
-        
-        batch_imgs, batch_mask, batch_dir, batch_fnames = [],[],[],[]
-        for stack, _dir, _fnames in samples:
-            # stack:(num_tta,t,h,w), label:(t,class)
-            t = stack.size(1)
-            
-            # img
-            img = torch.zeros(self.num_tta,t_max,img_size,img_size)
-            img[:,:t] = stack
-            
-            # mask
-            mask = [[True]]*t + [[False]]*(t_max-t)
-            mask = torch.tensor(mask)
-
-            batch_imgs.append(img)
-            batch_mask.append(mask)
-            batch_dir.append(_dir)
-            batch_fnames.append(_fnames)
-        
-        batch_imgs = torch.cat(batch_imgs,dim=0).unsqueeze(1)
-        batch_mask = torch.stack(batch_mask,dim=0)
-        # imgs(b*num_tta,1,t_max,h,w) mask(b,t_max) dir(b,t) fnames(b,t)
-        return batch_imgs, batch_mask, batch_dir, batch_fnames 
-    
-    @staticmethod
-    def get_transform(ch=1):
-        trans = transforms.Compose([
-                transforms.Resize(img_size),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=[0.5]*ch,
-                                     std=[0.5]*ch)
-            ]) 
-        return trans 
- 
-
 class BloodDataset_Test(Dataset):
-    def __init__(self, path):
+    def __init__(self, path, trans):
         self.path = path
-        self.trans = self.get_transform()
+        self.trans = trans 
 
         self.data = [] # [ (1,t,1), ... ]
 
         dirs = sorted(os.listdir(path))
+
         for _dir in dirs:
-            _fnames = os.listdir(f"{path}/{_dir}")
-            _fnames = [(int(f[f.find('_')+1:f.find('.jpg')]), f) 
-                        for f in _fnames]
-            _fnames = sorted(_fnames, key=lambda x:x[0])
-            _fnames = [f[1] for f in _fnames]
-            
+            _fnames = sorted(os.listdir(f"{path}/{_dir}"))
+
             self.data.append((_dir, _fnames))
 
     def __len__(self):
@@ -163,10 +82,9 @@ class BloodDataset_Test(Dataset):
         return batch_imgs, batch_mask, batch_dir, batch_fnames 
     
     @staticmethod
-    def get_transform(ch=1, tta=False):
+    def get_transform(ch=1):
         trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomHorizontalFlip(p=0.5 if tta else 0),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5]*ch,
                                      std=[0.5]*ch)
@@ -247,7 +165,7 @@ class BloodDataset(Dataset):
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomApply([
                         transforms.ColorJitter(0.1,0.1,0.1,0)
-                    ],p=0.4),
+                    ],p=0.5),
                 #GaussianBlur(kernel_size=int(0.1 * img_size)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5]*ch, std=[0.5]*ch)
@@ -269,7 +187,7 @@ class DatasetWrapper(object):
         self.train_valid_split_pkl = train_valid_split_pkl 
     
     def get_dataloaders(self):
-        # split train valid dirs
+        # split train dirs
         if self.train_valid_split_pkl is None:
             dirs = os.listdir(self.path)
             np.random.shuffle(dirs)
@@ -278,8 +196,8 @@ class DatasetWrapper(object):
         elif os.path.exists(self.train_valid_split_pkl):
             print("\t[Info] load pre split train valid set")
             with open(self.train_valid_split_pkl, 'rb') as f:
-                dirs = pickle.load(f)
-                train_dirs, valid_dirs = dirs['train'], dirs['valid']
+                sets = pickle.load(f)
+                train_dirs, valid_dirs = sets['train'], sets['valid']
         else:
             raise FileNotFoundError(f"{self.train_valid_split_pkl} not exis")
         

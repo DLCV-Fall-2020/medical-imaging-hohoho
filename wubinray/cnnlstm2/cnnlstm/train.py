@@ -39,17 +39,22 @@ def train(args, dataset):
     model.to(args.device)
 
     # loss
-    loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=2, clip=0.01)
-    #pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03]) / 3
-    #loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
+    pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03])
+    #loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=4, 
+    #                                    pos_weight=pos_weight)
+    loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
     # optimizer 
-    #optimizer = Ranger(model.parameters(), args.lr)
-    optimizer = optim.Adam(model.parameters(), args.lr) 
+    optimizer = Ranger(model.parameters(), args.lr)
+    #optimizer = optim.AdamW(model.parameters(), args.lr, 
+    #                        weight_decay=args.weight_decay)
+    #optimizer = optim.Adam(model.parameters(), args.lr) 
+    #optimizer = optim.SGD(model.parameters(), args.lr,
+    #                        args.momentum)
 
     # lr scheduler
     step_after = optim.lr_scheduler.CosineAnnealingLR(
-                                optimizer, T_max=30, 
+                                optimizer, T_max=25, 
                                 eta_min=args.eta_min, last_epoch=-1)
     lr_scheduler = WarmupScheduler(optimizer, multiplier=1,
                                 total_epoch=args.warmup_epochs,
@@ -58,7 +63,7 @@ def train(args, dataset):
     # ap_fix16
     use_fp16 = apex_support and args.fp16_precision 
     if use_fp16:
-        print("\t[Info] Use fp16_precision")
+        print(" [Info] Use fp16_precision")
         model, optimizer = amp.initialize(model, optimizer,
                 opt_level='O2', keep_batchnorm_fp32=True, verbosity=0)
     
@@ -69,8 +74,8 @@ def train(args, dataset):
 
         lr_scheduler.step()
 
-        train_loss, valid_loss, train_acc, train_recall, train_precision,\
-            train_f2 = [Averager() for i in range(6)]
+        train_loss, valid_loss, train_acc, train_recall, train_f2 =\
+                    [Averager() for i in range(5)]
         
         # train
         model.train()
@@ -96,24 +101,21 @@ def train(args, dataset):
             
             preds = torch.sigmoid(preds)
             metric = hemorrhage_metrics(preds.cpu().detach().numpy(),
-                                        lbls.cpu().detach().numpy(),
-                                        args.threshold)
+                                        lbls.cpu().detach().numpy())
             
             train_loss.add(loss.item())
             train_acc.add(metric['acc'])
-            train_precision.add(metric['precision'])
             train_recall.add(metric['recall'])
             train_f2.add(metric['f2'])
             #wandb.log({'train_loss':loss.item(),'train_acc':metric['acc'],
             #    'train_recall':metric['recall'],'train_f2':metric['f2']})
-            print("\t[%d/%d] loss:%.2f acc:%.2f prec:%.2f rec:%.2f f2:%.2f"%(
+            print("\t[%d/%d] loss:%.2f acc:%.2f recall:%.2f f2:%.2f"%(
                    idx+1,len(train_loader),train_loss.item(),
-                   train_acc.item(), train_precision.item(), 
-                   train_recall.item(), train_f2.item()),
+                   train_acc.item(), train_recall.item(), train_f2.item()),
                 end='  \r')
-        print("\t Train Loss:%.4f acc:%.3f prec:%.3f rec:%.3f f2:%.3f"%(
-            train_loss.item(), train_acc.item(), train_precision.item(), 
-            train_recall.item(), train_f2.item()))
+        print("\t Train Loss:%.4f acc:%.3f recall:%.3f f2:%.3f"%(
+            train_loss.item(), train_acc.item(), train_recall.item(),
+            train_f2.item()))
 
         # valid
         model.eval()
@@ -140,13 +142,12 @@ def train(args, dataset):
                 end='  \r')
 
         metric = hemorrhage_metrics(np.concatenate(val_pred),
-                                    np.concatenate(val_lbls),
-                                    args.threshold)
+                                      np.concatenate(val_lbls))
         #wandb.log({'valid_loss':loss.item(),'valid_acc':metric['acc'],
         #    'valid_recall':metric['recall'],'valid_f2':metric['f2']})
-        print("\t Valid Loss:%.4f acc:%.3f prec:%.3f rec:%.3f f2:%.3f"%(
-                valid_loss.item(), metric['acc'], metric['precision'],
-                metric['recall'], metric['f2']))
+        print("\t Valid Loss:%.4f acc:%.3f recall:%.3f f2:%.3f"%(
+                valid_loss.item(), metric['acc'], metric['recall'], 
+                metric['f2']))
 
         if metric['f2'] > best_valid_f2:
             best_valid_f2 = metric['f2']

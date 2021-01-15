@@ -36,13 +36,6 @@ submit:
 	python3 to_kaggle.py --pred_csv_path ./pred.csv --out_csv_path ./submit.csv 
 	rm ./pred.csv 
 
-submit_tta:
-	python3 inference.py --backbone $(BACKBONE) --model_path $(MODEL_PATH) --pred_csv_path ./pred.csv --threshold $(THRESHOLD) --device $(DEVICE) --bsize 2 --tta --num_tta 5
-	python3 to_kaggle.py --pred_csv_path ./pred.csv --out_csv_path ./submit.csv 
-	rm ./pred.csv 
-
-
-
 test:
 	python3 test.py 
 

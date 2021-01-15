@@ -1,6 +1,7 @@
 from data_aug.dataset_wrapper import DatasetWrapper
 from models.resnet import HemoResNet18, HemoResNet50, HemoResnext50 
 from loss.focal_loss import AsymmetricLoss, AsymmetricLossOptimized
+from optimizer.ranger2020 import Ranger 
 from utils.others import Averager
 from utils.args import parse_args 
 from utils.warmup import WarmupScheduler 
@@ -17,9 +18,9 @@ import wandb
 import warnings
 warnings.filterwarnings('ignore')
 
-np.random.seed(87)
-torch.manual_seed(87)
-torch.cuda.manual_seed_all(87)
+np.random.seed(987)
+torch.manual_seed(987)
+torch.cuda.manual_seed_all(987)
 
 try:
     from apex import amp
@@ -45,16 +46,17 @@ def train(args, dataset):
     loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=4, pos_weight=pos_weight)
 
     # optimizer & lr schedule
-    optimizer = optim.Adam(model.parameters(), args.lr, 
-                        weight_decay=args.weight_decay)
+    #optimizer = optim.Adam(model.parameters(), args.lr, 
+    #                    weight_decay=args.weight_decay)
+    optimizer = Ranger(model.parameters(), args.lr)
     #optimizer = optim.SGD(model.parameters(), args.lr)
 
     step_after = optim.lr_scheduler.CosineAnnealingLR(
-                                    optimizer, T_max=args.epochs, 
-                                    eta_min=args.eta_min, last_epoch=-1)
+                            optimizer, T_max=15, 
+                            eta_min=args.eta_min, last_epoch=-1)
     lr_scheduler = WarmupScheduler(optimizer, multiplier=1,
-                                    total_epoch = args.warmup_epochs,
-                                    after_scheduler = step_after)
+                                     total_epoch = args.warmup_epochs,
+                                     after_scheduler = step_after)
     
     # ap_fix16
     use_fp16 = apex_support and args.fp16_precision
@@ -67,7 +69,8 @@ def train(args, dataset):
     best_valid_f2 = 0
     for epoch in range(1,args.epochs+1):
         print(f" Epoch {epoch}")
-
+        
+        #if epoch > 0.7*args.epochs:
         lr_scheduler.step()
         
         train_loss, valid_loss, train_acc, train_recall, train_f2=\
@@ -99,8 +102,8 @@ def train(args, dataset):
             train_acc.add(metric['acc'])
             train_recall.add(metric['recall'])
             train_f2.add(metric['f2'])
-            wandb.log({'train_loss': loss.item(), 'train_acc': metric['acc'],
-                'train_recall': metric['recall'], 'train_f2': metric['f2']})
+            #wandb.log({'train_loss':loss.item(), 'train_acc': metric['acc'],
+            #    'train_recall': metric['recall'], 'train_f2': metric['f2']})
             print("\t[%d/%d] loss:%.2f acc:%.2f recall:%.2f f2:%.2f" % (
                     idx, len(train_loader), train_loss.item(), 
                     train_acc.item(), train_recall.item(), train_f2.item()),
@@ -131,9 +134,9 @@ def train(args, dataset):
         
         val_metric = hemorrhage_metrics(np.concatenate(val_pred),
                                         np.concatenate(val_lbls))
-        wandb.log({'valid_loss': loss.item(), 'valid_acc': val_metric['acc'],
-                   'valid_recall': val_metric['recall'], 
-                   'valid_f2': val_metric['f2']})
+        #wandb.log({'valid_loss':loss.item(), 'valid_acc': val_metric['acc'],
+        #           'valid_recall': val_metric['recall'], 
+        #           'valid_f2': val_metric['f2']})
         print("\t Valid loss:%.4f, acc:%.3f, recall:%.3f, f2:%.3f" % 
                 (valid_loss.item(), val_metric['acc'], val_metric['recall'], val_metric['f2']))
 
@@ -149,7 +152,7 @@ if __name__=='__main__':
 
     args = parse_args()
 
-    wandb.init(config=args, project="CT_Hemorrhage", name=f"base_ch{args.ch}")
+    #wandb.init(config=args, project="CT_Hemorrhage", name=f"base_ch{args.ch}")
     
     dataset = DatasetWrapper("/media/disk1/aa/Blood_data/train/", 
                              args.bsize, 
