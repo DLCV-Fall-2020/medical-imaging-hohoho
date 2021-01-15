@@ -25,6 +25,18 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(testing_config["MODEL_PATH"]))
     model.to(device)
 
+    if testing_config["END2END"]:
+        if testing_config["CNN_BACKBONE_TYPE"] == "resnet18":
+            cnn_model = HemoResNet18(in_channels = 3, n_classes=5)
+            cnn_model.load_state_dict(torch.load(testing_config["CNN_BACKBONE_PATH"]))
+            # to get embedding
+            model_latent = nn.Sequential(*list(cnn_model.base_model.children())[:-1])
+            cnn_model.base_model = model_latent
+            #################
+        cnn_model.to(testing_config["DEVICE"])
+        cnn_model.eval()
+
+
     model.eval()
     pt_name_list = []
     image_name_list = []
@@ -33,6 +45,15 @@ if __name__ == "__main__":
         for i, batch in enumerate(test_loader, 1):
             print(f"Process {i} / {len(test_loader)}    ", end="\r")
             data = batch["embeddings"].to(device, dtype=torch.float)
+
+            if testing_config["END2END"]:
+                # (PT, CT_LEN, 3, 512, 512) -> (PT, CT_LEN, 512)
+                pts_embedding = []
+                for one_pt_data in data:
+                    embeddings = cnn_model(one_pt_data)
+                    pts_embedding.append(torch.squeeze(torch.squeeze(embeddings,-1),-1))
+                data = torch.stack(pts_embedding)
+
             mask = batch['mask'].to(device, dtype=torch.int)
 
             logits = model(data)

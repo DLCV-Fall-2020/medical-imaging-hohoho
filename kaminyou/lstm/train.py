@@ -8,8 +8,8 @@ import yaml
 import pickle5 as pickle
 from datetime import datetime
 from utils.util import get_pt_id_list, get_weight
-from utils.dataset import LSTMHemorrhageDataset, collatefn
-from utils.models import HemoLSTMBasic
+from utils.dataset import LSTMHemorrhageDataset, collatefn, collatefn_end_to_end
+from utils.models import HemoLSTMBasic, HemoResNet18
 from utils.split import RandomSplitPt
 from utils.metric import hemorrhage_metrics
 from utils.draw import draw_compare_train_val, draw_metric
@@ -20,7 +20,7 @@ if __name__ == "__main__":
     experiment_root = "./experiment"
     experiment_id = now.strftime("%Y%m%d_%H%M%S")
     experiment_dir = os.path.join(experiment_root, experiment_id)
-    os.makedirs(experiment_dir)
+    #os.makedirs(experiment_dir)
 
     # read config
     with open("./config.yaml") as f:
@@ -28,8 +28,8 @@ if __name__ == "__main__":
     training_config = config["LSTM_TRAINING"]
 
     # copy config
-    with open(os.path.join(experiment_dir, "config.yaml"), 'w') as f:
-        documents = yaml.dump(config, f)
+    #with open(os.path.join(experiment_dir, "config.yaml"), 'w') as f:
+    #    documents = yaml.dump(config, f)
 
     # split set
     if training_config["FIX_SPLIT"]:
@@ -41,11 +41,27 @@ if __name__ == "__main__":
         random_split_pt = RandomSplitPt(train_data_root = training_config["TRAIN_DATA_PATH"])
         train_pt, val_pt = random_split_pt.randomly_split(test_size = 0.1)
     
-    train_dataset = LSTMHemorrhageDataset(pt_id_list = train_pt, embedding_root = training_config["TRAIN_EMBEDDING"], label_csv_path = training_config["TRAIN_LABEL_CSV"], mode = "train")
-    train_loader = DataLoader(train_dataset, batch_size=training_config["BATCH_SIZE"],collate_fn=collatefn, shuffle=True, num_workers = 16, pin_memory=True)
+    if training_config["END2END"]:
+        collate_fn = collatefn_end_to_end
+    else:
+        collate_fn = collatefn
+        
+    train_dataset = LSTMHemorrhageDataset(pt_id_list = train_pt, 
+                                          embedding_root = training_config["TRAIN_EMBEDDING"], 
+                                          label_csv_path = training_config["TRAIN_LABEL_CSV"], 
+                                          mode = "train",
+                                          end2end = training_config["END2END"],
+                                          data_root = training_config["IMG_ROOT"])
 
-    val_dataset = LSTMHemorrhageDataset(pt_id_list = val_pt, embedding_root = training_config["TRAIN_EMBEDDING"], label_csv_path = training_config["TRAIN_LABEL_CSV"], mode = "val")
-    val_loader = DataLoader(val_dataset, batch_size=training_config["BATCH_SIZE"],collate_fn=collatefn, shuffle=False, num_workers = 16, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=training_config["BATCH_SIZE"],collate_fn=collate_fn, shuffle=True, num_workers = 16, pin_memory=True)
+
+    val_dataset = LSTMHemorrhageDataset(pt_id_list = val_pt, 
+                                        embedding_root = training_config["TRAIN_EMBEDDING"], 
+                                        label_csv_path = training_config["TRAIN_LABEL_CSV"], 
+                                        mode = "val",
+                                        end2end = training_config["END2END"],
+                                        data_root = training_config["IMG_ROOT"])
+    val_loader = DataLoader(val_dataset, batch_size=training_config["BATCH_SIZE"],collate_fn=collate_fn, shuffle=False, num_workers = 16, pin_memory=True)
 
     n_classes = training_config["N_CLASS"]
     device = training_config["DEVICE"]
@@ -72,6 +88,18 @@ if __name__ == "__main__":
 
     model.to(device)
 
+    # init cnn_backbone if end2end 
+    if training_config["END2END"]:
+        if training_config["CNN_BACKBONE_TYPE"] == "resnet18":
+            cnn_model = HemoResNet18(in_channels = 3, n_classes=5)
+            cnn_model.load_state_dict(torch.load(training_config["CNN_BACKBONE_PATH"]))
+            # to get embedding
+            model_latent = nn.Sequential(*list(cnn_model.base_model.children())[:-1])
+            cnn_model.base_model = model_latent
+            #################
+        cnn_model.to(training_config["DEVICE"])
+        cnn_model.eval()
+
     # start training
     best_val_f2 = 0
     records = []
@@ -83,6 +111,16 @@ if __name__ == "__main__":
         for i, batch in enumerate(train_loader, 1):
             print(f"Process {i} / {len(train_loader)}    ", end="\r")
             data = batch["embeddings"].to(device, dtype=torch.float)
+
+            if training_config["END2END"]:
+                # (PT, CT_LEN, 3, 512, 512) -> (PT, CT_LEN, 512)
+                with torch.no_grad():
+                    pts_embedding = []
+                    for one_pt_data in data:
+                        embeddings = cnn_model(one_pt_data)
+                        pts_embedding.append(torch.squeeze(torch.squeeze(embeddings,-1),-1))
+                    data = torch.stack(pts_embedding)
+
             label = batch["labels"].to(device, dtype=torch.float)
             mask = batch['mask'].to(device, dtype=torch.int)
         
@@ -103,7 +141,7 @@ if __name__ == "__main__":
 
         if training_config["SCHEDULER"]:
             scheduler.step()
-            
+
         model.eval()
         val_pred = []
         val_true = []
@@ -112,6 +150,15 @@ if __name__ == "__main__":
             for i, batch in enumerate(val_loader, 1):
                 print(f"Process {i} / {len(val_loader)}    ", end="\r")
                 data = batch["embeddings"].to(device, dtype=torch.float)
+                
+                if training_config["END2END"]:
+                    # (PT, CT_LEN, 3, 512, 512) -> (PT, CT_LEN, 512)
+                    pts_embedding = []
+                    for one_pt_data in data:
+                        embeddings = cnn_model(one_pt_data)
+                        pts_embedding.append(torch.squeeze(torch.squeeze(embeddings,-1),-1))
+                    data = torch.stack(pts_embedding)
+
                 label = batch["labels"].to(device, dtype=torch.float)
                 mask = batch['mask'].to(device, dtype=torch.int)
         

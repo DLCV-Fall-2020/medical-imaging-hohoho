@@ -37,7 +37,7 @@ if __name__ == "__main__":
         model_latent = nn.Sequential(*list(model.base_model.children())[:-1])
         model.base_model = model_latent
         #################
-    model.to(preprocessing_config["device"])
+    model.to(preprocessing_config["DEVICE"])
 
     model.eval()
     train_embedding_dict = {}
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     with torch.no_grad():
         for i, (pt_name, img_name, data) in enumerate(train_loader, 1):
             print(f"Process {i} / {len(train_loader)}    ", end="\r")
-            data = data.to(preprocessing_config["device"])
+            data = data.to(preprocessing_config["DEVICE"])
 
             embedding = np.squeeze(np.squeeze(model(data).cpu().numpy(), axis=-1), axis=-1)
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
         for i, (pt_name, img_name, data) in enumerate(test_loader, 1):
             print(f"Process {i} / {len(test_loader)}    ", end="\r")
-            data = data.to(preprocessing_config["device"])
+            data = data.to(preprocessing_config["DEVICE"])
 
             embedding = np.squeeze(np.squeeze(model(data).cpu().numpy(), axis=-1), axis=-1)
 
