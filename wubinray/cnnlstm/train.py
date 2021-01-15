@@ -42,23 +42,17 @@ def train(args, dataset):
     # model
     model = HemoCnnLstm(args.backbone, args.n_classes, args.load_pretrained)
     model.to(args.device)
-    for param in model.backbone.parameters():
-        param.requires_grad = False 
 
     # optimizer 
-    param_optimizer = list(model.named_parameters())
-    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
     plist = [
-        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 
-         'weight_decay': args.weight_decay},
-        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 
-         'weight_decay': 0.0}
+        {'params': [p for n,p in model.named_parameters() if 'backbone' not in n]},
+        {'params': model.backbone.parameters(), 'lr': args.lr * 0.1},
     ]
     #optimizer = Ranger(plist, args.lr)
     optimizer = optim.Adam(plist, args.lr)
     #optimizer = Ranger(models.parameters(), args.lr)
     #optimizer = optim.Adam(models.parameters(), args.lr)
-
+    
     # lr scheduler
     step_after = optim.lr_scheduler.CosineAnnealingLR(
                                 optimizer, T_max=30, 
@@ -83,11 +77,6 @@ def train(args, dataset):
 
         train_loss, valid_loss, train_acc, train_recall, train_precision,\
             train_f2 = [Averager() for i in range(6)]
-        
-        # tune backbone ?? 
-        if epoch > args.warmup_epochs:
-            for param in model.backbone.parameters():
-                param.requires_grad = True 
 
         # train
         model.train()
