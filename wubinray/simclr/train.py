@@ -97,7 +97,7 @@ def train(args, dataset):
 
         # valid
         model.eval()
-        for idx, (imgs1, imgs2) in enumerate(train_loader):
+        for idx, (imgs1, imgs2) in enumerate(valid_loader):
             b = imgs1.size(0)
             imgs1 = imgs1.to(args.device)
             imgs2 = imgs2.to(args.device)
