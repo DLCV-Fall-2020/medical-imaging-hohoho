@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import StepLR
 import numpy as np
 import os
 import yaml
@@ -54,11 +55,21 @@ if __name__ == "__main__":
 
     model = HemoLSTMBasic(embed_size=training_config["LSTM_EMBEDDING_SIZE"], LSTM_UNITS=training_config["LSTM_UNITS"])
 
+    param_optimizer = list(model.named_parameters())
+    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+    plist = [
+        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': training_config["DECAY"]},
+        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        ]
+
     if training_config["OPTIMIZER"] == "Adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=training_config["LEARNING_RATE"])
+        optimizer = torch.optim.Adam(plist, lr=training_config["LEARNING_RATE"])
     elif training_config["OPTIMIZER"] == "SGD":
-        optimizer = torch.optim.SGD(model.parameters(), lr=training_config["LEARNING_RATE"], momentum=0.9, nesterov=True)
+        optimizer = torch.optim.SGD(plist, lr=training_config["LEARNING_RATE"], momentum=0.9, nesterov=True)
     
+    if training_config["SCHEDULER"]:
+        scheduler = StepLR(optimizer, 1, gamma=training_config["LR_GAMMA"], last_epoch=-1)
+
     model.to(device)
 
     # start training
@@ -90,6 +101,9 @@ if __name__ == "__main__":
             train_pred.append(torch.sigmoid(logits).cpu().detach().numpy())
             train_true.append(label.cpu().numpy())
 
+        if training_config["SCHEDULER"]:
+            scheduler.step()
+            
         model.eval()
         val_pred = []
         val_true = []
