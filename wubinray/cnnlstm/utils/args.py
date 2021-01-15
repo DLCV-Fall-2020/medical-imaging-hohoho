@@ -55,7 +55,7 @@ def parse_args(string=None):
                         help="cosin annealing to lr=eta_min")
     parser.add_argument('--momentum', type=float, default=0.9,
                         help="momentum")
-    parser.add_argument('--weight_decay', type=float, default=1e-4,
+    parser.add_argument('--weight_decay', type=float, default=0.0,
                         help="LARS optimizer weight_decay")
 
 

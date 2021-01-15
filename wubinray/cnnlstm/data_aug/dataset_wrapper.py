@@ -106,7 +106,7 @@ class BloodDataset_Test(Dataset):
         self.path = path
         self.trans = self.get_transform()
 
-        self.data = [] # [ (1,t,1), ... ]
+        self.data = [] # [ (1,t), ... ]
 
         dirs = sorted(os.listdir(path))
         for _dir in dirs:
@@ -163,7 +163,7 @@ class BloodDataset_Test(Dataset):
         return batch_imgs, batch_mask, batch_dir, batch_fnames 
     
     @staticmethod
-    def get_transform(ch=1, tta=False):
+    def get_transform(ch=1):
         trans = transforms.Compose([
                 transforms.Resize(img_size),
                 transforms.ToTensor(),
@@ -195,6 +195,7 @@ class BloodDataset(Dataset):
     
     def __getitem__(self, idx):
         _dir, _fnames, label = self.data[idx]
+        print(_fnames)
         stack = []
         for f in _fnames:
             img_path = self.path + f"{_dir}/{f}"
@@ -242,7 +243,7 @@ class BloodDataset(Dataset):
     def get_transform(ch=1):
         train_trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomRotation(40, fill=(0,)), 
+                transforms.RandomRotation(20, fill=(0,)), 
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomApply([
                         transforms.ColorJitter(0.1,0.1,0.1,0)

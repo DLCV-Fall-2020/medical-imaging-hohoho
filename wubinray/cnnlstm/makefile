@@ -39,12 +39,12 @@ CUDA_ENV=export CUDA_VISIBLE_DEVICES=0
 submit:
 	$(CUDA_ENV) && python3 inference.py --backbone $(BACKBONE) --model_path $(MODEL_PATH) --pred_csv_path ./pred.csv --threshold $(THRESHOLD) --device $(DEVICE)
 	python3 to_kaggle.py --pred_csv_path ./pred.csv --out_csv_path ./submit.csv 
-	rm ./pred.csv 
+	#rm ./pred.csv 
 
 submit_tta:
 	python3 inference.py --backbone $(BACKBONE) --model_path $(MODEL_PATH) --pred_csv_path ./pred.csv --threshold $(THRESHOLD) --device $(DEVICE) --bsize 2 --tta --num_tta 5
 	python3 to_kaggle.py --pred_csv_path ./pred.csv --out_csv_path ./submit.csv 
-	rm ./pred.csv 
+	#rm ./pred.csv 
 
 
 
