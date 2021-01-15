@@ -39,9 +39,9 @@ def train(args, dataset):
     model.to(args.device)
 
     # loss
-    loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=2, clip=0.01)
-    #pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03]) / 3
-    #loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
+    #loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=2, clip=0.01)
+    pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03]) / 3
+    loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
 
     # optimizer 
     #optimizer = Ranger(model.parameters(), args.lr)

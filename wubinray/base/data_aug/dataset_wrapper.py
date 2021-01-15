@@ -166,10 +166,17 @@ class DatasetWrapper(object):
 
         # dump train valid split
         os.system("mkdir -p ./checkpoints")
+        '''
         with open("./checkpoints/train_valid_split.pkl", 'wb') as f:
             pickle.dump({'train':train_dirs, 'valid':valid_dirs},
                         f, protocol=pickle.HIGHEST_PROTOCOL)
- 
+        '''
+        with open("./checkpoints/train_set.pkl", "wb") as f:
+            pickle.dump(train_dirs, f, protocol=pickle.HIGHEST_PROTOCOL)
+        with open("./checkpoints/valid_set.pkl", "wb") as f:
+            pickle.dump(valid_dirs, f, protocol=pickle.HIGHEST_PROTOCOL)
+        print("\t[Info] dump train valid set")
+
         # data aug
         train_trans, valid_trans = BloodDataset.get_transform(self.ch)
 

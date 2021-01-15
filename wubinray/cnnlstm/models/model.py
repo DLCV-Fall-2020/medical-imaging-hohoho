@@ -81,7 +81,7 @@ class HemoCnnLstm(nn.Module):
         # backbone
         self.backbone = nn.DataParallel(self.backbone)
 
-        self.drop2d = SpatialDropout(p=0.15)
+        self.drop2d = SpatialDropout(p=0)#0.15)
        
         # lstm
         self.lstm = HemoLSTMBasic(EMBED_SIZE, LSTM_UNITS, DO=0, 

@@ -61,7 +61,7 @@ def train(args, dataset):
     # ap_fix16
     use_fp16 = apex_support and args.fp16_precision
     if use_fp16:
-        print(" Use fp16_precision")
+        print("\t[Info] Use fp16_precision")
         model, optimizer = amp.initialize(model, optimizer,
                 opt_level='O2', keep_batchnorm_fp32=True, verbosity=0)
 
@@ -73,8 +73,8 @@ def train(args, dataset):
         #if epoch > 0.7*args.epochs:
         lr_scheduler.step()
         
-        train_loss, valid_loss, train_acc, train_recall, train_f2=\
-                [Averager() for i in range(5)]
+        train_loss, valid_loss, train_acc, train_precision, train_recall, \
+                train_f2 = [Averager() for i in range(6)]
         
         # training
         model.train()
@@ -100,16 +100,19 @@ def train(args, dataset):
                                         lbls.cpu().detach().numpy())
             train_loss.add(loss.item())
             train_acc.add(metric['acc'])
+            train_precision.add(metric['precision'])
             train_recall.add(metric['recall'])
             train_f2.add(metric['f2'])
             #wandb.log({'train_loss':loss.item(), 'train_acc': metric['acc'],
             #    'train_recall': metric['recall'], 'train_f2': metric['f2']})
-            print("\t[%d/%d] loss:%.2f acc:%.2f recall:%.2f f2:%.2f" % (
+            print("\t[%d/%d] loss:%.2f acc:%.2f prec:%.2f rec:%.2f f2:%.2f" %(
                     idx, len(train_loader), train_loss.item(), 
-                    train_acc.item(), train_recall.item(), train_f2.item()),
+                    train_acc.item(), train_recall.item(), 
+                    train_precision.item(), train_f2.item()),
                 end='  \r')
-        print("\t Train loss:%.4f, acc:%.3f, recall:%.3f, f2:%.3f" % (
-            train_loss.item(), train_acc.item(), train_recall.item(), train_f2.item()))
+        print("\t Train loss:%.4f, acc:%.3f, prec:%.3f, rec:%.3f, f2:%.3f"%(
+                train_loss.item(), train_acc.item(), train_precision.item(),
+                train_recall.item(), train_f2.item()))
 
         # validating
         model.eval()
@@ -137,8 +140,10 @@ def train(args, dataset):
         #wandb.log({'valid_loss':loss.item(), 'valid_acc': val_metric['acc'],
         #           'valid_recall': val_metric['recall'], 
         #           'valid_f2': val_metric['f2']})
-        print("\t Valid loss:%.4f, acc:%.3f, recall:%.3f, f2:%.3f" % 
-                (valid_loss.item(), val_metric['acc'], val_metric['recall'], val_metric['f2']))
+        print("\t Valid loss:%.4f, acc:%.3f, prec:%.3f rec:%.3f, f2:%.3f" % 
+                (valid_loss.item(), val_metric['acc'], 
+                val_metric['precision'], val_metric['recall'], 
+                val_metric['f2']))
 
         if val_metric['f2'] > best_valid_f2:
             best_valid_f2 = val_metric['f2']

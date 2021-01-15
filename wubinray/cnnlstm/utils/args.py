@@ -7,7 +7,7 @@ def parse_args(string=None):
                         help="batch size")
     parser.add_argument('--warmup_epochs', type=int, default=5,
                         help="lr warmup epochs")
-    parser.add_argument('--epochs', type=int, default=150,
+    parser.add_argument('--epochs', type=int, default=100,
                         help="epochs")
     parser.add_argument('--num_workers', type=int, default=5,
                         help="dataloader workers")
@@ -41,6 +41,8 @@ def parse_args(string=None):
     parser.add_argument('--pretrained', action="store_true")
     parser.add_argument('--load_pretrained', type=str, default=None,
                         help="../base/checkpoints/best.pth")
+    parser.add_argument('--threshold', type=float, default=0.5,
+                        help="threshold")
     # loss
     parser.add_argument('--use_cos_similarity', action="store_true",
                         help="calculate loss use cosine similairty")

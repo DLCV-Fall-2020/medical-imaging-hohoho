@@ -166,7 +166,6 @@ class BloodDataset_Test(Dataset):
     def get_transform(ch=1, tta=False):
         trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomHorizontalFlip(p=0.5 if tta else 0),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5]*ch,
                                      std=[0.5]*ch)
@@ -277,9 +276,16 @@ class DatasetWrapper(object):
             train_dirs, valid_dirs = dirs[:split], dirs[split:]
         elif os.path.exists(self.train_valid_split_pkl):
             print("\t[Info] load pre split train valid set")
+            ''''
             with open(self.train_valid_split_pkl, 'rb') as f:
                 dirs = pickle.load(f)
                 train_dirs, valid_dirs = dirs['train'], dirs['valid']
+            '''
+            with open(self.train_valid_split_pkl+"/train_set.pkl", 'rb') as f:
+                train_dirs = pickle.load(f)
+            with open(self.train_valid_split_pkl+"/valid_set.pkl", 'rb') as f:
+                valid_dirs = pickle.load(f)
+            print(f"\t\t len train:{len(train_dirs)} valid:{len(valid_dirs)}")
         else:
             raise FileNotFoundError(f"{self.train_valid_split_pkl} not exis")
         

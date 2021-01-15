@@ -1,3 +1,4 @@
+from data_aug.dataset_wrapper import DatasetWrapper, BloodDataset_Test
 import torch
 import torch.nn as nn
 '''
@@ -6,20 +7,14 @@ from models.model import HemoCnnLstm
 model = HemoCnnLstm()
 model.cuda()
 '''
-a = torch.ones(4,5,64,64)
-#out = model(a.cuda())
 
-try:
-    from apex import amp
-    import apex 
-    apex_support = True
-except:
-    print("\t[Info] apex is not supported")
-    apex_support = False 
+dataset = DatasetWrapper("/media/disk1/aa/Blood_data/train/", 4)
+train,_ = dataset.get_dataloaders()
+dataset = train.dataset 
 
-print(apex_support)
-a = torch.ones(3,10)
-a = a.cuda()
-b = apex.normalization.FusedLayerNorm(10).cuda()
-c = b(a)
+#dataset = BloodDataset_Test("/media/disk1/aa/Blood_data/test")
+
+for i in range(0,1200,30):
+    print(dataset.data[i][1])
+    input()
 
