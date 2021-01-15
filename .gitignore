@@ -9,4 +9,5 @@ wandb
 *.swp
 *.pth
 *.pt
+*.pkl
 submit.csv
