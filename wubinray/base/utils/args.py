@@ -20,7 +20,7 @@ def parse_args(string=None):
                     help="input channel, how many img to one sample")
     parser.add_argument('--img_size', type=int, default=512,
                         help="input img size")
-    parser.add_argument('--valid_size', type=float, default=0.1,
+    parser.add_argument('--valid_size', type=float, default=0.15,
                         help="valid split %")
     parser.add_argument('--num_classes', type=int, default=5,
                         help="dataset classes")

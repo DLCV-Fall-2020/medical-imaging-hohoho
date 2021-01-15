@@ -1,6 +1,6 @@
 BACKBONE=resnetxx
 THRESHOLD=0.5
-DEVICE=cuda:1
+DEVICE=cuda:0
 CH=1
 
 train_resnet18: 

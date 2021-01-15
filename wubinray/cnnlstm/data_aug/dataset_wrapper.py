@@ -106,7 +106,7 @@ class BloodDataset_Test(Dataset):
         self.path = path
         self.trans = self.get_transform()
 
-        self.data = [] # [ (1,t,1), ... ]
+        self.data = [] # [ (1,t), ... ]
 
         dirs = sorted(os.listdir(path))
         for _dir in dirs:
@@ -163,10 +163,9 @@ class BloodDataset_Test(Dataset):
         return batch_imgs, batch_mask, batch_dir, batch_fnames 
     
     @staticmethod
-    def get_transform(ch=1, tta=False):
+    def get_transform(ch=1):
         trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomHorizontalFlip(p=0.5 if tta else 0),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5]*ch,
                                      std=[0.5]*ch)
@@ -196,6 +195,7 @@ class BloodDataset(Dataset):
     
     def __getitem__(self, idx):
         _dir, _fnames, label = self.data[idx]
+        
         stack = []
         for f in _fnames:
             img_path = self.path + f"{_dir}/{f}"
@@ -243,7 +243,7 @@ class BloodDataset(Dataset):
     def get_transform(ch=1):
         train_trans = transforms.Compose([
                 transforms.Resize(img_size),
-                transforms.RandomRotation(40, fill=(0,)), 
+                transforms.RandomRotation(20, fill=(0,)), 
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomApply([
                         transforms.ColorJitter(0.1,0.1,0.1,0)
@@ -277,9 +277,16 @@ class DatasetWrapper(object):
             train_dirs, valid_dirs = dirs[:split], dirs[split:]
         elif os.path.exists(self.train_valid_split_pkl):
             print("\t[Info] load pre split train valid set")
+            ''''
             with open(self.train_valid_split_pkl, 'rb') as f:
                 dirs = pickle.load(f)
                 train_dirs, valid_dirs = dirs['train'], dirs['valid']
+            '''
+            with open(self.train_valid_split_pkl+"/train_set.pkl", 'rb') as f:
+                train_dirs = pickle.load(f)
+            with open(self.train_valid_split_pkl+"/valid_set.pkl", 'rb') as f:
+                valid_dirs = pickle.load(f)
+            print(f"\t\t len train:{len(train_dirs)} valid:{len(valid_dirs)}")
         else:
             raise FileNotFoundError(f"{self.train_valid_split_pkl} not exis")
         
