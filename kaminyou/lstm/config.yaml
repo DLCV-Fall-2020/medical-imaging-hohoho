@@ -3,7 +3,7 @@ PREPROCESSING:
   TEST_DATA_PATH: ./../../Blood_data/test/
   BACKBONE_MODEL_PATH: ./backbone_model/resnet18_rotation40_0.74933.pth #./../../wubinray/base/checkpoints/resnet18/best_0.75.pth
   BACKBONE_MDOEL_NAME: resnet18
-  device: cuda
+  DEVICE: cuda
   TRAIN_EMBEDDING_SAVE: ./train_embedding_resnet18_0.74933.pkl
   TEST_EMBEDDING_SAVE: ./test_embedding_resnet18_0.74933.pkl
 
@@ -11,17 +11,23 @@ LSTM_TRAINING:
   FIX_SPLIT: true
   TRAIN_SET_PATH: ./train_set_resnet18_0.75001.pkl
   VAL_SET_PATH: ./val_set_resnet18_0.75001.pkl
-  TRAIN_DATA_PATH: ./../../Blood_data/train/
   TRAIN_EMBEDDING: ./train_embedding_resnet18_0.75001.pkl
   TEST_EMBEDDING: ./test_embedding_resnet18_0.75001.pkl
   TRAIN_LABEL_CSV: ./../../Blood_data/train.csv
 
-  BATCH_SIZE: 64
-  MAX_EPOCH: 30 
+  # END TO END PART
+  END2END: true
+  CNN_BACKBONE_TYPE: resnet18
+  CNN_BACKBONE_PATH: ./backbone_model/resnet18_0.75001.pth
+  IMG_ROOT: ./../../Blood_data/train/
+
+  # TRAINING
+  BATCH_SIZE: 4
+  MAX_EPOCH: 100 
   N_CLASS: 5
   DEVICE: cuda
   OPTIMIZER: Adam
-  LEARNING_RATE: 0.001
+  LEARNING_RATE: 5.0e-05
   SCHEDULER: true
   LR_GAMMA: 1.0
   DECAY: 0.0
@@ -30,12 +36,17 @@ LSTM_TRAINING:
   LSTM_UNITS: 64
 
 LSTM_INFERENCE:
-  MODEL_PATH: ./experiment/20210114_104142/lstm_best.pth
+  MODEL_PATH: ./experiment/20210115_134201_kaggle_ori/lstm_best.pth
   TEST_DATA_PATH: ./../../Blood_data/test/
   TEST_EMBEDDING: ./test_embedding_resnet18_0.75001.pkl
 
   N_CLASS: 5
   BATCH_SIZE: 64
   DEVICE: cuda
-  OUTPUT_CSV: ./lstm_batch128_from_resnet18_0.75001_b32.csv
+  OUTPUT_CSV: ./lstm_kaggle_ori_from_resnet18_0.75001_b4.csv
   THRESHOLD: 0.5
+
+  # END TO END PART
+  END2END: false
+  CNN_BACKBONE_TYPE: resnet18
+  CNN_BACKBONE_PATH: ./backbone_model/resnet18_0.75001.pth
