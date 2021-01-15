@@ -47,6 +47,6 @@ LSTM_INFERENCE:
   THRESHOLD: 0.5
 
   # END TO END PART
-  END2END: true
+  END2END: false
   CNN_BACKBONE_TYPE: resnet18
   CNN_BACKBONE_PATH: ./backbone_model/resnet18_0.75001.pth

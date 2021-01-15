@@ -20,7 +20,7 @@ if __name__ == "__main__":
     experiment_root = "./experiment"
     experiment_id = now.strftime("%Y%m%d_%H%M%S")
     experiment_dir = os.path.join(experiment_root, experiment_id)
-    #os.makedirs(experiment_dir)
+    os.makedirs(experiment_dir)
 
     # read config
     with open("./config.yaml") as f:
@@ -28,8 +28,8 @@ if __name__ == "__main__":
     training_config = config["LSTM_TRAINING"]
 
     # copy config
-    #with open(os.path.join(experiment_dir, "config.yaml"), 'w') as f:
-    #    documents = yaml.dump(config, f)
+    with open(os.path.join(experiment_dir, "config.yaml"), 'w') as f:
+        documents = yaml.dump(config, f)
 
     # split set
     if training_config["FIX_SPLIT"]:
@@ -150,7 +150,7 @@ if __name__ == "__main__":
             for i, batch in enumerate(val_loader, 1):
                 print(f"Process {i} / {len(val_loader)}    ", end="\r")
                 data = batch["embeddings"].to(device, dtype=torch.float)
-                
+
                 if training_config["END2END"]:
                     # (PT, CT_LEN, 3, 512, 512) -> (PT, CT_LEN, 512)
                     pts_embedding = []

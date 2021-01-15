@@ -1,7 +1,7 @@
 from utils.util import get_pt_id_list, prediction_to_csv, img_id_to_pt_id
 from torch.utils.data import DataLoader
-from utils.dataset import LSTMHemorrhageDataset, collatefn
-from utils.models import HemoLSTMBasic
+from utils.dataset import LSTMHemorrhageDataset, collatefn, collatefn_end_to_end
+from utils.models import HemoLSTMBasic, HemoResNet18
 from utils.split import RandomSplitPt
 from utils.metric import hemorrhage_metrics
 import yaml
@@ -15,9 +15,14 @@ if __name__ == "__main__":
         config = yaml.load(f, Loader=yaml.FullLoader)
     testing_config = config["LSTM_INFERENCE"]
 
+    if testing_config["END2END"]:
+        collate_fn = collatefn_end_to_end
+    else:
+        collate_fn = collatefn
+
     test_id_list = get_pt_id_list(testing_config["TEST_DATA_PATH"])
     test_dataset = LSTMHemorrhageDataset(pt_id_list = test_id_list, embedding_root = testing_config["TEST_EMBEDDING"], mode = "test")
-    test_loader = DataLoader(test_dataset, batch_size=testing_config["BATCH_SIZE"],collate_fn=collatefn, shuffle=False, num_workers = 16, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=testing_config["BATCH_SIZE"],collate_fn=collate_fn, shuffle=False, num_workers = 16, pin_memory=True)
 
     n_classes = testing_config["N_CLASS"]
     device = testing_config["DEVICE"]
