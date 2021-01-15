@@ -25,10 +25,10 @@ if __name__ == "__main__":
                                                             std=[0.5, 0.5, 0.5])
                                     ])
     train_dataset = ReHemorrhageDataset(train_id_list, data_root = preprocessing_config["TRAIN_DATA_PATH"], stack_img = True, mode="test",augmentation=val_transform)
-    train_loader = DataLoader(train_dataset, batch_size=256, shuffle=False, num_workers = 16, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=False, num_workers = 16, pin_memory=True)
 
     test_dataset = ReHemorrhageDataset(test_id_list, data_root = preprocessing_config["TEST_DATA_PATH"], stack_img = True, mode="test",augmentation=val_transform)
-    test_loader = DataLoader(test_dataset, batch_size=256, shuffle=False, num_workers = 16, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers = 16, pin_memory=True)
 
     if preprocessing_config["BACKBONE_MDOEL_NAME"] == "resnet18":
         model = HemoResNet18(in_channels = 3, n_classes=5)
