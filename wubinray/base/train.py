@@ -103,8 +103,8 @@ def train(args, dataset):
             train_precision.add(metric['precision'])
             train_recall.add(metric['recall'])
             train_f2.add(metric['f2'])
-            #wandb.log({'train_loss':loss.item(), 'train_acc': metric['acc'],
-            #    'train_recall': metric['recall'], 'train_f2': metric['f2']})
+            wandb.log({'train_loss':loss.item(), 'train_acc': metric['acc'],
+                    'train_recall': metric['recall'], 'train_f2': metric['f2']})
             print("\t[%d/%d] loss:%.2f acc:%.2f prec:%.2f rec:%.2f f2:%.2f" %(
                     idx, len(train_loader), train_loss.item(), 
                     train_acc.item(), train_recall.item(), 
@@ -137,9 +137,9 @@ def train(args, dataset):
         
         val_metric = hemorrhage_metrics(np.concatenate(val_pred),
                                         np.concatenate(val_lbls))
-        #wandb.log({'valid_loss':loss.item(), 'valid_acc': val_metric['acc'],
-        #           'valid_recall': val_metric['recall'], 
-        #           'valid_f2': val_metric['f2']})
+        wandb.log({'valid_loss':loss.item(), 'valid_acc': val_metric['acc'],
+                   'valid_recall': val_metric['recall'], 
+                   'valid_f2': val_metric['f2']})
         print("\t Valid loss:%.4f, acc:%.3f, prec:%.3f rec:%.3f, f2:%.3f" % 
                 (valid_loss.item(), val_metric['acc'], 
                 val_metric['precision'], val_metric['recall'], 
@@ -157,7 +157,7 @@ if __name__=='__main__':
 
     args = parse_args()
 
-    #wandb.init(config=args, project="CT_Hemorrhage", name=f"base_ch{args.ch}")
+    wandb.init(config=args, project="CT_Hemorrhage", name=f"base_ch{args.ch}")
     
     dataset = DatasetWrapper("/media/disk1/aa/Blood_data/train/", 
                              args.bsize, 
