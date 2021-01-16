@@ -43,8 +43,8 @@ def train(args, dataset):
     ntxent_loss = NTXentLoss(args.device, args.bsize, args.temperature)
 
     # optimizer 
-    #optimizer = optim.SGD(model.parameters(), args.lr)
-    optimizer = Ranger(model.parameters(), args.lr)
+    optimizer = optim.SGD(model.parameters(), args.lr)
+    #optimizer = Ranger(model.parameters(), args.lr)
 
     # lr scheduler
     step_after = optim.lr_scheduler.CosineAnnealingLR(
@@ -90,6 +90,7 @@ def train(args, dataset):
             optimizer.step()
 
             train_loss.add(loss.item())
+            wandb.log({'train_loss':loss.item()})
             print("\t[%d/%d] loss:%.2f"%(
                     idx+1,len(train_loader),train_loss.item()),
                 end='  \r')
@@ -112,6 +113,7 @@ def train(args, dataset):
             print("\t[%d/%d] loss:%.2f"%(
                     idx+1,len(valid_loader),valid_loss.item()),
                 end='  \r')
+        wandb.log({'valid_loss':valid_loss.item()})
         print("\t Valid Loss:%.4f "%(valid_loss.item()))
 
         if valid_loss.item() < best_valid_loss:
@@ -124,7 +126,7 @@ def train(args, dataset):
 if __name__=='__main__':
     args = parse_args()
 
-    #wandb.init(config=args, project="CT_Hemorrhage", name=f"SimCLR")
+    wandb.init(config=args, project="CT_Hemorrhage", name=f"SimCLR")
 
     dataset = DatasetWrapper("/media/disk1/aa/Blood_data/",
                             args.bsize,
