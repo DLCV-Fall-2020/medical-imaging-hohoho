@@ -60,13 +60,15 @@ HemoResNets = {"resnet18": HemoResNet18,
                "resnet50": HemoResNet50 }
    
 class HemoCnnLstm(nn.Module):
-    def __init__(self, backbone="resnet18", n_classes=5, pretrained=None):
+    def __init__(self, backbone="resnet18", ch=3, n_classes=5, pretrained=None):
         super().__init__()
-       
+        
+        self.ch = ch 
+
         if "resnet" in backbone:  
-            cnn_net = HemoResNets[backbone](1, n_classes)
+            cnn_net = HemoResNets[backbone](ch, n_classes)
         elif "densnet121" == backbone:
-            cnn_net = HemoDenseNet121(1, n_classes)
+            cnn_net = HemoDenseNet121(ch, n_classes)
         
         if pretrained is not None:
             print(f"\t[Info] Load petrained {pretrained}")
@@ -88,10 +90,10 @@ class HemoCnnLstm(nn.Module):
                                                     n_classes=n_classes)
 
     def forward(self, x):
-        b,_,t,w,h = x.shape 
+        b,t,ch,w,h = x.shape 
         
         # cnn
-        x = x.view(b*t,1,w,h)
+        x = x.view(b*t,ch,w,h)
         h = self.backbone(x, feature_only=True)
         h = h.view(b,t,-1)
         

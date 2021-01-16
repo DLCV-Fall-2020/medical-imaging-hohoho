@@ -5,6 +5,7 @@ from PIL import Image, ImageOps
 
 import os
 import glob 
+import math 
 import torch
 import pickle
 import numpy as np
@@ -24,10 +25,11 @@ img_size=512
 # ich,ivh,sah,sdh,edh
 
 class BloodDataset_Test_TTA(Dataset): # TestTimeAugment(3)
-    def __init__(self, path, num_tta=3):
+    def __init__(self, path, ch=3, num_tta=3):
         self.path = path
+        self.ch = ch 
         self.num_tta = num_tta 
-        self.trans = self.get_transform()
+        self.trans = self.get_transform(ch)
 
         self.data = [] # [ (1,t,1), ... ]
 
@@ -48,16 +50,34 @@ class BloodDataset_Test_TTA(Dataset): # TestTimeAugment(3)
         _dir, _fnames = self.data[idx]
         stack_tta = []
         for i in range(self.num_tta):
-            stack = []
-            for f in _fnames:
-                img_path = self.path + f"{_dir}/{f}"
-                img = Image.open(img_path).resize((img_size,img_size))
-                img = self.trans(img)
-                stack.append(img)
-            stack = np.stack(stack, axis=1)
+            if self.ch==1:
+               stack = []
+                for f in _fnames:
+                    img_path = self.path + f"{_dir}/{f}"
+                    img = Image.open(img_path).resize((img_size,img_size))
+                    img = self.trans(img)
+                    stack.append(img)
+                stack = np.stack(stack, axis=1)
+            else:
+                stack = []
+                for i,f in enumerate(_fnames):
+                    tmp = []
+                    for j in range(i-self.ch//2, i+math.ceil(self.ch/2)):
+                        if j<0 or j>=len(_fnames):
+                            j=i 
+                        img_path = self.path + f"/{_dir}/_fnames[j]}"
+                        img = Image.open(img_path)
+                        img = img.resize((img_size,img_size))
+                        tmp.append(img)
+                    tmp = np.stack(tmp, axis=-1)
+                    img = Image.fromarray(tmp)
+                    img = self.trans(img)
+                    stack.append(img)
+                stack = np.stack(stack, axis=0)
             stack_tta.append(stack)
+            
         stack_tta = np.concatenate(stack_tta)
-        stack = torch.tensor(stack) # (num_tta,t,h,w)
+        stack = torch.tensor(stack) # (num_tta,t,ch,h,w)
         
         _dir = [_dir]*len(_fnames)
 
@@ -68,7 +88,7 @@ class BloodDataset_Test_TTA(Dataset): # TestTimeAugment(3)
         
         batch_imgs, batch_mask, batch_dir, batch_fnames = [],[],[],[]
         for stack, _dir, _fnames in samples:
-            # stack:(num_tta,t,h,w), label:(t,class)
+            # stack:(num_tta,t,ch,h,w), label:(t,class)
             t = stack.size(1)
             
             # img
@@ -84,9 +104,9 @@ class BloodDataset_Test_TTA(Dataset): # TestTimeAugment(3)
             batch_dir.append(_dir)
             batch_fnames.append(_fnames)
         
-        batch_imgs = torch.cat(batch_imgs,dim=0).unsqueeze(1)
+        batch_imgs = torch.cat(batch_imgs,dim=0)
         batch_mask = torch.stack(batch_mask,dim=0)
-        # imgs(b*num_tta,1,t_max,h,w) mask(b,t_max) dir(b,t) fnames(b,t)
+        # imgs(b*num_tta,t_max,ch,h,w) mask(b,t_max) dir(b,t) fnames(b,t)
         return batch_imgs, batch_mask, batch_dir, batch_fnames 
     
     @staticmethod
@@ -102,9 +122,10 @@ class BloodDataset_Test_TTA(Dataset): # TestTimeAugment(3)
  
 
 class BloodDataset_Test(Dataset):
-    def __init__(self, path):
+    def __init__(self, path, ch):
         self.path = path
-        self.trans = self.get_transform()
+        self.ch = ch 
+        self.trans = self.get_transform(ch)
 
         self.data = [] # [ (1,t), ... ]
 
@@ -123,30 +144,47 @@ class BloodDataset_Test(Dataset):
 
     def __getitem__(self, idx):
         _dir, _fnames = self.data[idx]
-        stack = []
-        for f in _fnames:
-            img_path = self.path + f"{_dir}/{f}"
-            img = Image.open(img_path).resize((img_size,img_size))
-            img = self.trans(img)
-            stack.append(img)
-        stack = np.stack(stack, axis=1)
-        stack = torch.tensor(stack) # (1,t,h,w)
-        
+        if self.ch==1:
+            stack = []
+            for f in _fnames:
+                img_path = self.path + f"{_dir}/{f}"
+                img = Image.open(img_path).resize((img_size,img_size))
+                img = self.trans(img)
+                stack.append(img)
+            stack = np.stack(stack, axis=1)
+            stack = torch.tensor(stack) # (1,t,h,w)
+        else:
+            stack = []
+            for i,f in enumerate(_fnames):
+                tmp = []
+                for j in range(i-self.ch//2, i+math.ceil(self.ch/2)):
+                    if j<0 or j>=len(_fnames):
+                        j=i
+                    img_path = self.path + f"/{_dir}/{_fnames[j]}"
+                    img = Image.open(img_path)
+                    img = img.resize((img_size, img_size))
+                    tmp.append(img)
+                tmp = np.stack(tmp, axis=-1)
+                img = Image.fromarray(tmp)
+                img = self.trans(img)
+                stack.append(img)
+            stack = np.stack(stack, axis=0) # (t,ch,h,w)
+
         _dir = [_dir]*len(_fnames)
 
-        return stack, _dir, _fnames   
+        return stack, _dir, _fnames 
 
     def collate_fn(self, samples):
-        t_max = max([stack.shape[1] for stack,_,_ in samples])
+        t_max = max([stack.shape[0] for stack,_,_ in samples])
         
         batch_imgs, batch_mask, batch_dir, batch_fnames = [],[],[],[]
         for stack, _dir, _fnames in samples:
-            # stack:(1,t,h,w), label:(t,class)
-            t = stack.size(1)
+            # stack:(t,ch,h,w), label:(t,class)
+            t = stack.size(0)
             
             # img
-            img = torch.zeros(1,t_max,img_size,img_size)
-            img[:,:t] = stack
+            img = torch.zeros(t_max,self.ch,img_size,img_size)
+            img[:t] = stack
             
             # mask
             mask = [[True]]*t + [[False]]*(t_max-t)
@@ -159,7 +197,7 @@ class BloodDataset_Test(Dataset):
         
         batch_imgs = torch.stack(batch_imgs,dim=0)
         batch_mask = torch.stack(batch_mask,dim=0)
-        # imgs(b,1,t_max,h,w) mask(b,t_max) dir(b,t) fnames(b,t)
+        # imgs(b,t_max,ch,h,w) mask(b,t_max) dir(b,t) fnames(b,t)
         return batch_imgs, batch_mask, batch_dir, batch_fnames 
     
     @staticmethod
@@ -174,12 +212,13 @@ class BloodDataset_Test(Dataset):
  
 
 class BloodDataset(Dataset):
-    def __init__(self, path, dirs, trans):
+    def __init__(self, path, dirs, trans, ch=1):
         train_df = pd.read_csv(path.rstrip('/')+".csv")
         #train_df = pd.read_csv(path.rstrip('/')+"_clean.csv")
 
         self.path = path
         self.trans = trans 
+        self.ch = ch 
         
         self.data = [] # [ (1,t,(t,class)), ... ] 
         
@@ -196,31 +235,48 @@ class BloodDataset(Dataset):
     def __getitem__(self, idx):
         _dir, _fnames, label = self.data[idx]
         
-        stack = []
-        for f in _fnames:
-            img_path = self.path + f"{_dir}/{f}"
-            img = Image.open(img_path).resize((img_size,img_size))
-            img = self.trans(img)
-            stack.append(img)
-        stack = np.stack(stack, axis=1)
-        
+        if self.ch==1:
+            stack = []
+            for f in _fnames:
+                img_path = self.path + f"{_dir}/{f}"
+                img = Image.open(img_path).resize((img_size,img_size))
+                img = self.trans(img)
+                stack.append(img)
+            stack = np.stack(stack, axis=1)
+        else:
+            stack = []
+            for i,f in enumerate(_fnames):
+                tmp = []
+                for j in range(i-self.ch//2, i+math.ceil(self.ch/2)):
+                    if j<0 or j>=len(_fnames):
+                        j=i
+                    img_path = self.path + f"/{_dir}/{_fnames[j]}"
+                    img = Image.open(img_path)
+                    img = img.resize((img_size, img_size))
+                    tmp.append(img)
+                tmp = np.stack(tmp, axis=-1)
+                img = Image.fromarray(tmp)
+                img = self.trans(img)
+                stack.append(img)
+            stack = np.stack(stack, axis=0)
+
         label = label.astype(np.bool)
         
-        stack = torch.tensor(stack) # (1,t,h,w)
+        stack = torch.tensor(stack) # (t,ch,h,w)
         label = torch.tensor(label) # (t,class)
         return stack, label
 
     def collate_fn(self, samples):
-        t_max = max([stack.shape[1] for stack,_ in samples])
+        t_max = max([stack.shape[0] for stack,_ in samples])
         
         batch_imgs, batch_lbls, batch_mask = [],[],[]
         for stack, label in samples:
-            # stack:(1,t,h,w), label:(t,class)
+            # stack:(t,ch,h,w), label:(t,class)
             t, cls = label.shape 
             
             # img
-            img = torch.zeros(1,t_max,img_size,img_size)
-            img[:,:t] = stack
+            img = torch.zeros(t_max,self.ch,img_size,img_size)
+            img[:t] = stack
             
             # lbl
             lbl = torch.zeros(t_max, cls).bool()
@@ -234,7 +290,7 @@ class BloodDataset(Dataset):
             batch_lbls.append(lbl)
             batch_mask.append(mask)
         
-        batch_imgs = torch.stack(batch_imgs,dim=0) # (b,1,t_max,h,w)
+        batch_imgs = torch.stack(batch_imgs,dim=0) # (b,t_max,ch,h,w)
         batch_lbls = torch.stack(batch_lbls,dim=0) # (b,t_max,class)
         batch_mask = torch.stack(batch_mask,dim=0) # (b,t_max)
         return batch_imgs, batch_lbls, batch_mask 
@@ -261,9 +317,10 @@ class BloodDataset(Dataset):
 
 class DatasetWrapper(object):
 
-    def __init__(self, path, bsize, valid_size=0.15, 
+    def __init__(self, path, ch, bsize, valid_size=0.15, 
                     train_valid_split_pkl=None):
         self.path = path 
+        self.ch = ch
         self.bsize = bsize
         self.valid_size = valid_size
         self.train_valid_split_pkl = train_valid_split_pkl 
@@ -291,11 +348,11 @@ class DatasetWrapper(object):
             raise FileNotFoundError(f"{self.train_valid_split_pkl} not exis")
         
         # data aug
-        train_trans, valid_trans = BloodDataset.get_transform()
+        train_trans, valid_trans = BloodDataset.get_transform(self.ch)
     
         # dataset
-        train_dataset = BloodDataset(self.path, train_dirs, train_trans)
-        valid_dataset = BloodDataset(self.path, valid_dirs, valid_trans)
+        train_dataset = BloodDataset(self.path, train_dirs, train_trans, self.ch)
+        valid_dataset = BloodDataset(self.path, valid_dirs, valid_trans, self.ch)
 
         # dataloader
         train_loader = DataLoader(train_dataset,

@@ -36,20 +36,21 @@ def train(args, dataset):
  
     # loss
     #loss_f = AsymmetricLossOptimized(gamma_pos=0, gamma_neg=2, clip=0.01)
-    pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03]) / 1.5
+    pos_weight = torch.tensor([7.54, 11.22, 7.64, 5.07, 24.03])
     loss_f = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(args.device)
    
     # model
-    model = HemoCnnLstm(args.backbone, args.n_classes, args.load_pretrained)
+    model = HemoCnnLstm(args.backbone, args.ch, args.n_classes, args.load_pretrained)
     model.to(args.device)
 
     # optimizer 
     plist = [
         {'params': [p for n,p in model.named_parameters() if 'backbone' not in n]},
-        {'params': model.backbone.parameters(), 'lr': args.lr * 0.1},
+        {'params': model.backbone.parameters(), 'lr': args.lr * 0.1}, #1.0
     ]
     #optimizer = Ranger(plist, args.lr)
     optimizer = optim.Adam(plist, args.lr)
+    #optimizer = optim.SGD(plist, args.lr)
     #optimizer = Ranger(models.parameters(), args.lr)
     #optimizer = optim.Adam(models.parameters(), args.lr)
     
@@ -167,6 +168,7 @@ if __name__=='__main__':
     wandb.init(config=args, project="CT_Hemorrhage", name=f"CNN_LSTM_fine-tune")
 
     dataset = DatasetWrapper("/media/disk1/aa/Blood_data/train/",
+                            args.ch,
                             args.bsize,
                             args.valid_size,
                             args.train_valid_split_pkl)

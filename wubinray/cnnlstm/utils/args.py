@@ -16,7 +16,7 @@ def parse_args(string=None):
     parser.add_argument('--fp16_precision', action="store_true",
                         help="train on fp16")
     # dataset
-    parser.add_argument('--ch', type=int, default=1,
+    parser.add_argument('--ch', type=int, default=3,
                         help="input channel, how many img to one sample")
     parser.add_argument('--t', type=int, default=3,
                         help="time sequence of image input")
