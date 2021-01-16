@@ -46,7 +46,7 @@ def train(args, dataset):
     # optimizer 
     plist = [
         {'params': [p for n,p in model.named_parameters() if 'backbone' not in n]},
-        {'params': model.backbone.parameters(), 'lr': args.lr * 0.1}, #1.0
+        {'params': model.backbone.parameters(), 'lr': args.lr * 1.0}, #1.0
     ]
     #optimizer = Ranger(plist, args.lr)
     optimizer = optim.Adam(plist, args.lr)

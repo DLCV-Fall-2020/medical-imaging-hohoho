@@ -51,7 +51,7 @@ class BloodDataset_Test_TTA(Dataset): # TestTimeAugment(3)
         stack_tta = []
         for i in range(self.num_tta):
             if self.ch==1:
-               stack = []
+                stack = []
                 for f in _fnames:
                     img_path = self.path + f"{_dir}/{f}"
                     img = Image.open(img_path).resize((img_size,img_size))
@@ -65,7 +65,7 @@ class BloodDataset_Test_TTA(Dataset): # TestTimeAugment(3)
                     for j in range(i-self.ch//2, i+math.ceil(self.ch/2)):
                         if j<0 or j>=len(_fnames):
                             j=i 
-                        img_path = self.path + f"/{_dir}/_fnames[j]}"
+                        img_path = self.path + f"/{_dir}/{_fnames[j]}"
                         img = Image.open(img_path)
                         img = img.resize((img_size,img_size))
                         tmp.append(img)
