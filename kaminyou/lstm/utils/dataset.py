@@ -3,10 +3,47 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 import torch
+import torch.nn as nn
+from torchvision import transforms
 from torch.utils.data import Dataset
 from torchvision import transforms
 from utils.augmentation import get_default_transform
+from utils.models import HemoResNet18
 import pickle
+
+def collatefn_end_to_end(batch):
+    """
+    each batch: pt_id, image_ids, embeddings([img(3,512,512),img...]), labels(in train mode)
+    """
+    maxlen = max([l["embeddings"].shape[0] for l in batch])
+    embdim = batch[0]["embeddings"].shape[1]
+    
+    if "labels" in batch[0]:
+        withlabel = True
+        labdim= batch[0]["labels"].shape[1]
+        
+    else:
+        withlabel = False
+    for b in batch:
+        masklen = maxlen-len(b["embeddings"])
+        zeors_tensor_temp = torch.zeros((maxlen, 3, 512, 512))
+        zeors_tensor_temp[masklen:,:,:,:] = b["embeddings"]
+        b["embeddings"] = zeors_tensor_temp
+        
+        b["img_ids"] = ["-1"] * masklen + b["img_ids"]
+        b["mask"] = np.ones((maxlen))
+        b["mask"][:masklen] = 0.
+        if withlabel:
+            b['labels'] = np.vstack((np.zeros((maxlen-len(b['labels']), labdim)), b['labels']))
+            
+    outbatch = {'embeddings' : torch.stack([b['embeddings'] for b in batch], 0)}  
+    outbatch['mask'] = torch.tensor(np.vstack([np.expand_dims(b['mask'], 0) \
+                                                for b in batch])).float()
+    outbatch['img_ids'] = [b['img_ids'] for b in batch]
+    outbatch['pt'] = [b['pt'] for b in batch]
+    if withlabel:
+        outbatch['labels'] = torch.tensor(np.vstack([np.expand_dims(b['labels'], 0) for b in batch])).float()
+    return outbatch
 
 def collatefn(batch):
     """
@@ -43,12 +80,25 @@ def collatefn(batch):
     return outbatch
 
 class LSTMHemorrhageDataset(Dataset):
-    def __init__(self, pt_id_list, embedding_root = "./train_embedding.pkl", label_csv_path = "./../../Blood_data/train.csv", mode = "train"):
+    def __init__(self, pt_id_list, 
+                 embedding_root = "./train_embedding.pkl", 
+                 label_csv_path = "./../../Blood_data/train.csv", 
+                 mode = "train", end2end=False, 
+                 data_root="./../../Blood_data/train/",
+                 stack_img = True):
         self.pt_id_list = pt_id_list
         self.embedding_root = embedding_root
         self.label_csv_path = label_csv_path
         self.mode = mode
-        self.__read_embedding()
+        self.end2end = end2end
+        self.data_root = data_root
+        self.stack_img = stack_img
+
+        if self.end2end:
+            self.transform = self.__init_transform()
+            self.__get_all_images_with_pt_id()
+        else:
+            self.__read_embedding()
         
         if (mode == "train") or (mode == "val"):
             self.__read_label_csv()
@@ -56,6 +106,27 @@ class LSTMHemorrhageDataset(Dataset):
     def __read_embedding(self):
         with open(self.embedding_root, "rb" ) as f: 
             self.embedding = pickle.load(f)
+    
+    def __init_transform(self, ch=3, img_size=512):
+        if not self.mode == "train":
+            trans = transforms.Compose([
+                    #transforms.Resize(img_size),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.5]*ch, std=[0.5]*ch)
+                ])
+        else:
+            trans = transforms.Compose([
+                    #transforms.Resize(img_size),
+                    transforms.RandomRotation(30, fill=(0,)),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomApply([
+                            transforms.ColorJitter(0.1,0.1,0.1,0)
+                        ],p=0.4),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.5]*ch, std=[0.5]*ch)
+                ])
+        
+        return trans
 
     def __read_label_csv(self):
         self.all_label_df = pd.read_csv(self.label_csv_path)
@@ -65,14 +136,77 @@ class LSTMHemorrhageDataset(Dataset):
         img_id = id_itself + "_" + str(order) + ".jpg"
         return img_id
     
+    def __get_all_images_with_pt_id(self):
+        all_images_path = []
+        pt_images_available_dict = {}
+        
+        for pt in self.pt_id_list:
+            pt_images = os.listdir(os.path.join(self.data_root, pt))
+            pt_images = sorted(pt_images, key = lambda i: self.__get_order(i))
+            pt_images_available_dict[pt] = []
+            
+            for single_img in pt_images:
+                all_images_path.append([pt, single_img])
+                pt_images_available_dict[pt].append(self.__get_order(single_img))
+                
+        self.all_images_path = all_images_path
+        self.pt_images_available_dict = pt_images_available_dict
+    
+    def __query_pt_ct_num(self, pt):
+        return len(os.listdir(os.path.join(self.data_root, pt)))
+
+    def __read_img(self, img_path):
+        if self.stack_img:
+            img = Image.open(img_path)
+        else:
+            img = Image.open(img_path).convert("RGB")
+        if not img.size == (512,512):
+            img = img.resize((512,512))
+        return img
+
+    def __get_order(self, img_name):
+        try:
+            order = int(img_name.split("_")[1].split(".")[0])
+            return order
+        except:
+            return 0
+
+    def img_name_change_order(self, img_name, new_order):
+        prefix = img_name.split("_")[0]
+        suffix = img_name.split(".")[1]
+        return prefix + "_" + str(new_order) + "." + suffix
+
     def query_label(self, pt_name, img_id):
         label = self.all_label_df.query(f'dirname == "{pt_name}" and ID == "{img_id}"').values[0][2:]
         return np.array(label, dtype=int)
     
+    def get_img_pipeline(self, pt_name, img_name):
+        img = self.__read_img(os.path.join(self.data_root, pt_name, img_name))
+        
+        mid_img_order = self.__get_order(img_name)
+
+        if self.stack_img:
+            
+            top_img_order = (mid_img_order - 1) if (mid_img_order - 1) in self.pt_images_available_dict[pt_name] else mid_img_order
+            bottom_img_order = (mid_img_order + 1) if (mid_img_order + 1) in self.pt_images_available_dict[pt_name] else mid_img_order
+            
+            img_top = self.__read_img(os.path.join(self.data_root, pt_name, self.img_name_change_order(img_name, top_img_order)))
+            img_bottom = self.__read_img(os.path.join(self.data_root, pt_name, self.img_name_change_order(img_name, bottom_img_order)))
+            
+            stack = np.stack((np.array(img_top), np.array(img), np.array(img_bottom)), axis=-1) # (512, 512, channel)
+            img = Image.fromarray(stack.astype(np.uint8))
+
+        # augmentation
+        img = self.transform(img)
+        return img # 3*512*512
+    
     def __getitem__(self, index):
         pt = self.pt_id_list[index]
-        pt_embedding = self.embedding[pt]
-        CT_len = len(pt_embedding)
+        if self.end2end:
+            CT_len = self.__query_pt_ct_num(pt)
+        else:
+            pt_embedding = self.embedding[pt]
+            CT_len = len(pt_embedding)
 
         stack_accum = 0
         img_order_idx = 0
@@ -81,8 +215,8 @@ class LSTMHemorrhageDataset(Dataset):
         label_stack = []
         while stack_accum < CT_len:
             img_id = self.__pt_id_generate_img_id(pt, img_order_idx)
-            if img_id in pt_embedding:
-                pt_embedding_stack.append(pt_embedding[img_id])
+            if self.end2end:
+                pt_embedding_stack.append(self.get_img_pipeline(pt, img_id))
                 img_id_stack.append(img_id)
 
                 if not self.mode == "test":
@@ -92,7 +226,22 @@ class LSTMHemorrhageDataset(Dataset):
                 stack_accum += 1
                 img_order_idx += 1
 
-        pt_embedding_stack = np.vstack(pt_embedding_stack)
+            else:
+                if img_id in pt_embedding:
+                    pt_embedding_stack.append(pt_embedding[img_id])
+                    img_id_stack.append(img_id)
+
+                    if not self.mode == "test":
+                        label = self.query_label(pt, img_id)
+                        label_stack.append(label)
+
+                    stack_accum += 1
+                    img_order_idx += 1
+        if self.end2end:
+            pt_embedding_stack = torch.stack(pt_embedding_stack, 0)
+
+        else:
+            pt_embedding_stack = np.vstack(pt_embedding_stack)
         
         
         if not self.mode == "test":
