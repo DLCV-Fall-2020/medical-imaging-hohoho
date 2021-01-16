@@ -25,8 +25,8 @@ def parse_args(string=None):
     parser.add_argument('--num_classes', type=int, default=5,
                         help="dataset classes")
     # model
-    parser.add_argument('--backbone', type=str, default='resnet10_3d',
-                        choices=["resnet10_3d", "resnet18_3d"],
+    parser.add_argument('--backbone', type=str, default='resnet18',
+                        choices=["resnet18", "resnet18_3d"],
                         help='backbone used')
     parser.add_argument('--pretrained', action="store_true")
     parser.add_argument('--hidd_dim', type=int, default=128,
