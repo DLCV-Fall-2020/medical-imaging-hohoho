@@ -120,7 +120,12 @@ def train(args, dataset):
             path=f"./checkpoints/{args.backbone}"
             os.system(f"mkdir -p {path}")
             torch.save(model.state_dict(), f"{path}/best.pth")
-            print("\t save weight")
+            print("\t save weight, best valid")
+        if epoch%5==0:
+            path=f"./checkpoints/{args.backbone}"
+            os.system(f"mkdir -p {path}")
+            torch.save(model.state_dict(), f"{path}/{epoch}.pth")
+            print(f"\t save weight, epoch{epoch}")
 
 if __name__=='__main__':
     args = parse_args()
