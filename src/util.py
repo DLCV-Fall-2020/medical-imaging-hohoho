@@ -35,8 +35,8 @@ def prediction_to_csv(pt_name_list, image_name_list, prediction, output_csv_name
         out_kaggle_name = output_csv_name #.replace(".csv", "_KAGGLE.csv")
         ta_convert(output_csv_name, out_kaggle_name)
         print(f"Save as {out_kaggle_name}")
-        if remove_defunct:
-            os.remove(output_csv_name)
+        #if remove_defunct:
+        #    os.remove(output_csv_name)
     else:
         print(f"Save as {output_csv_name}")
 
