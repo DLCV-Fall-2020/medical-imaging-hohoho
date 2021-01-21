@@ -32,7 +32,7 @@ def prediction_to_csv(pt_name_list, image_name_list, prediction, output_csv_name
     prediction_df.to_csv(output_csv_name, index=False)
 
     if to_kaggle:
-        out_kaggle_name = output_csv_name.replace(".csv", "_KAGGLE.csv")
+        out_kaggle_name = output_csv_name #.replace(".csv", "_KAGGLE.csv")
         ta_convert(output_csv_name, out_kaggle_name)
         print(f"Save as {out_kaggle_name}")
         if remove_defunct:
