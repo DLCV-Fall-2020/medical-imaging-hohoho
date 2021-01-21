@@ -1,6 +1,7 @@
 # DLCV Final Project ( Medical-Imaging )
 
 # How to run your code?
+### To inference testing data
 To reproduce the results, it is easy to run the provided script:
 ```script
 ./omnipotent.sh <Path to Blood_test_data> <Path to the output csv file>
@@ -9,6 +10,30 @@ For example,
 ```script
 ./omnipotent.sh Blood_data/test/ submit_test.csv
 ```
+### To train
+#### STEP 1: train the CNN backbone
+```
+cd wubinray/base/
+make train_resnet18
+```
+#### STEP 2: copy the CNN backbone model to the lstm folder
+```
+cp wubinary/base/checkpoints/resnet18/best.pth kaminyou/lstm/backbone_model/best.pth
+```
+#### STEP 3: revise the backbone model path in config.yaml
+```yaml
+PREPROCESSING:
+  BACKBONE_MODEL_PATH: ./backbone_model/best.pth
+```
+#### STEP 4: train the LSTM model
+```
+python3 preprocessing.py
+python3 train.py
+```
+#### STEP 5: obtain the lstm model
+The lstm model will be saved in the `kaminyou/lstm/experiment/datetime/lstm_best.pth`.
+#### STEP 6: inference for the testing data
+Simply move those two models in the root folder and following the steps in previous `To inference testing data` part. 
 
 # Usage
 To start working on this final project, you should clone this repository into your local machine by using the following command:
