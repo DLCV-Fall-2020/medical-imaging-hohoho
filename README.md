@@ -1,12 +1,15 @@
 # DLCV Final Project ( Medical-Imaging )
 
 # How to run your code?
-> TODO: Please provide example scripts to run your code. For example, 
-> 1. python3 preprocessing.py <Path to Blood_data>
-> 2. python3 inference.py <Path to the output csv file>
-> ...
+To reproduce the results, it is easy to run the provided script:
+```script
+./omnipotent.sh <Path to Blood_test_data> <Path to the output csv file>
+```
+For example,
+```script
+./omnipotent.sh Blood_data/test/ submit_test.csv
+```
 
-    
 # Usage
 To start working on this final project, you should clone this repository into your local machine by using the following command:
 
