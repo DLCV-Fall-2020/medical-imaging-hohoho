@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     n_classes = testing_config["N_CLASS"]
     device = testing_config["DEVICE"]
-    model = HemoLSTMBasic(embed_size=512)
+    model = HemoLSTMBasic(embed_size=512, LSTM_UNITS=testing_config["LSTM_UNITS"])
     model.load_state_dict(torch.load(testing_config["MODEL_PATH"]))
     model.to(device)
 
@@ -75,4 +75,4 @@ if __name__ == "__main__":
 
     prediction_to_csv(pt_name_list, image_name_list, prediction, 
                       output_csv_name=testing_config["OUTPUT_CSV"], 
-                      threshold=testing_config["THRESHOLD"], to_kaggle=True, remove_defunct=True)
+                      threshold=testing_config["THRESHOLD"], to_kaggle=True, remove_defunct=False)

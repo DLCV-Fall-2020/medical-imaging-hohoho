@@ -1,34 +1,34 @@
 PREPROCESSING:
   TRAIN_DATA_PATH: ./../../Blood_data/train/
   TEST_DATA_PATH: ./../../Blood_data/test/
-  BACKBONE_MODEL_PATH: ./backbone_model/resnet18_rotation40_0.74933.pth #./../../wubinray/base/checkpoints/resnet18/best_0.75.pth
+  BACKBONE_MODEL_PATH: ./backbone_model/best_resnet18_0.75836.pth #./../../wubinray/base/checkpoints/resnet18/best_0.75.pth
   BACKBONE_MDOEL_NAME: resnet18
   DEVICE: cuda
-  TRAIN_EMBEDDING_SAVE: ./train_embedding_resnet18_0.74933.pkl
-  TEST_EMBEDDING_SAVE: ./test_embedding_resnet18_0.74933.pkl
+  TRAIN_EMBEDDING_SAVE: ./train_embedding_resnet18_0.75836.pkl
+  TEST_EMBEDDING_SAVE: ./test_embedding_resnet18_0.75836.pkl
 
 LSTM_TRAINING: 
   FIX_SPLIT: true
-  TRAIN_SET_PATH: ./train_set_resnet18_0.75001.pkl
-  VAL_SET_PATH: ./val_set_resnet18_0.75001.pkl
-  TRAIN_EMBEDDING: ./train_embedding_resnet18_0.75001.pkl
-  TEST_EMBEDDING: ./test_embedding_resnet18_0.75001.pkl
+  TRAIN_SET_PATH: ./train_set_resnet18_0.75836.pkl
+  VAL_SET_PATH: ./val_set_resnet18_0.75836.pkl
+  TRAIN_EMBEDDING: ./train_embedding_resnet18_0.75836.pkl
+  TEST_EMBEDDING: ./test_embedding_resnet18_0.75836.pkl
   TRAIN_LABEL_CSV: ./../../Blood_data/train.csv
 
   # END TO END PART
-  END2END: true
+  END2END: false
   CNN_BACKBONE_TYPE: resnet18
-  CNN_BACKBONE_PATH: ./backbone_model/resnet18_0.75001.pth
+  CNN_BACKBONE_PATH: ./backbone_model/resnet18_0.75836.pth
   IMG_ROOT: ./../../Blood_data/train/
 
   # TRAINING
-  BATCH_SIZE: 4
-  MAX_EPOCH: 100 
+  BATCH_SIZE: 64
+  MAX_EPOCH: 7
   N_CLASS: 5
   DEVICE: cuda
   OPTIMIZER: Adam
-  LEARNING_RATE: 5.0e-05
-  SCHEDULER: true
+  LEARNING_RATE: 1.0e-3
+  SCHEDULER: false
   LR_GAMMA: 1.0
   DECAY: 0.0
   
@@ -36,17 +36,20 @@ LSTM_TRAINING:
   LSTM_UNITS: 64
 
 LSTM_INFERENCE:
-  MODEL_PATH: ./experiment/20210115_134201_kaggle_ori/lstm_best.pth
+  MODEL_PATH: ./experiment/20210117_234827_l32/lstm_best_0.78162.pth
   TEST_DATA_PATH: ./../../Blood_data/test/
   TEST_EMBEDDING: ./test_embedding_resnet18_0.75001.pkl
+
+  LSTM_UNITS: 32
 
   N_CLASS: 5
   BATCH_SIZE: 64
   DEVICE: cuda
-  OUTPUT_CSV: ./lstm_kaggle_ori_from_resnet18_0.75001_b4.csv
-  THRESHOLD: 0.5
+  OUTPUT_CSV: ./lstm_kaggle_ori_from_resnet18_0.75001_l32again_0.45.csv
+  THRESHOLD: 0.45
 
   # END TO END PART
   END2END: false
   CNN_BACKBONE_TYPE: resnet18
   CNN_BACKBONE_PATH: ./backbone_model/resnet18_0.75001.pth
+  
