@@ -36,13 +36,13 @@ class HemoSupConLoss(nn.Module):
         # positive samples, mutual info, have blood
         mask = torch.mm(labels, labels.T).float()
         mask[np.diag_indices(bsize)] = 0 
-        mask *= self.pos_weight # have blood's pos weight
+        #mask *= self.pos_weight # have blood's pos weight
         pos = (similarity * mask.detach()).sum(1, keepdim=True)
 
         # positive samples, mutual info, no blood
-        mask = torch.mm((1-labels), (1-labels).T).float() / 5
-        mask[np.diag_indices(bsize)] = 0
-        pos += (similarity * mask.detach()).sum(1, keepdim=True)
+        #mask = torch.mm((1-labels), (1-labels).T).float() / 5
+        #mask[np.diag_indices(bsize)] = 0
+        #pos += (similarity * mask.detach()).sum(1, keepdim=True)
 
         # contrast samples
         mask_neg = (mask==0) + mask

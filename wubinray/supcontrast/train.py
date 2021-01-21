@@ -1,4 +1,4 @@
-from data_aug.dataset_wrapper import DatasetWrapper
+from data_aug.dataset_wrapper_clr import DatasetWrapper
 from models.resnet import HemoResNet18
 from loss.supconloss import HemoSupConLoss
 from optimizer.ranger2020 import Ranger
@@ -117,12 +117,12 @@ def train(args, dataset):
 
         if valid_loss.item() < best_valid_loss:
             best_valid_loss = valid_loss.item()
-            path=f"./checkpoints/{args.backbone}"
+            path=f"./checkpoints/clr/{args.backbone}"
             os.system(f"mkdir -p {path}")
             torch.save(model.state_dict(), f"{path}/best.pth")
             print("\t save weight, best valid")
         if epoch%5==0:
-            path=f"./checkpoints/{args.backbone}"
+            path=f"./checkpoints/clr/{args.backbone}"
             os.system(f"mkdir -p {path}")
             torch.save(model.state_dict(), f"{path}/{epoch}.pth")
             print(f"\t save weight, epoch{epoch}")
