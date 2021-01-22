@@ -1,7 +1,7 @@
 # DLCV Final Project ( Medical-Imaging )
 
 # How to run your code?
-### To inference testing data
+### To infer testing data
 To reproduce the results, it is easy to run the provided script:
 ```script
 ./omnipotent.sh <Path to Blood_test_data> <Path to the output csv file>
@@ -37,7 +37,7 @@ python3 train.py
 ```
 #### STEP 5: obtain the lstm model
 The lstm model will be saved in the `kaminyou/lstm/experiment/datetime/lstm_best.pth`.
-#### STEP 6: inference for the testing data
+#### STEP 6: infer for the testing data
 Simply move those two models in the root folder and following the steps in previous `To inference testing data` part. 
 
 # Usage
