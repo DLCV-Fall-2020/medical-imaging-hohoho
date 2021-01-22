@@ -16,14 +16,19 @@ For example,
 cd wubinray/base/
 make train_resnet18
 ```
-#### STEP 2: copy the CNN backbone model to the lstm folder
+#### STEP 2: copy the CNN backbone model and fixed train/val set to the lstm folder
 ```
 cp wubinary/base/checkpoints/resnet18/best.pth kaminyou/lstm/backbone_model/best.pth
+cp wubinary/base/checkpoints/resnet18/train_set.pkl kaminyou/lstm/train_set.pkl
+cp wubinary/base/checkpoints/resnet18/valid_set.pkl kaminyou/lstm/valid_set.pkl
 ```
-#### STEP 3: revise the backbone model path in config.yaml
+#### STEP 3: revise the backbone model path and serialized train/val set path in config.yaml
 ```yaml
 PREPROCESSING:
   BACKBONE_MODEL_PATH: ./backbone_model/best.pth
+LSTM_TRAINING: 
+  TRAIN_SET_PATH: ./train_set.pkl
+  VAL_SET_PATH: ./valid_set.pkl
 ```
 #### STEP 4: train the LSTM model
 ```
